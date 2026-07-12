@@ -26,6 +26,13 @@
         app:iconSpaceReserved="false" />
 
     <SwitchPreference
+            android:key="input_swipe_dpad_enabled"
+            android:title="@string/swipe_dpad"
+            android:summary="@string/swipe_dpad_summary"
+            app:iconSpaceReserved="false"
+            android:defaultValue="false" />
+
+    <SwitchPreference
             android:key="input_touch_haptic_feedback_enabled"
             android:title="@string/vibrate_on_touch"
             app:iconSpaceReserved="false"

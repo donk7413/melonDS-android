@@ -468,6 +468,12 @@ class SharedPreferencesSettingsRepository(
         }
     }
 
+    override fun isSwipeDpadEnabled(): Flow<Boolean> {
+        return getOrCreatePreferenceSharedFlow("input_swipe_dpad_enabled") {
+            preferences.getBoolean("input_swipe_dpad_enabled", false)
+        }
+    }
+
     override fun isRetroAchievementsRichPresenceEnabled(): Boolean {
         return preferences.getBoolean("ra_rich_presence", true)
     }

@@ -15,6 +15,7 @@ import me.magnum.melonds.ui.emulator.input.DpadInputHandler
 import me.magnum.melonds.ui.emulator.input.FrontendInputHandler
 import me.magnum.melonds.ui.emulator.input.IInputListener
 import me.magnum.melonds.ui.emulator.input.SingleButtonInputHandler
+import me.magnum.melonds.ui.emulator.input.SwipeDpadInputHandler
 import me.magnum.melonds.ui.emulator.input.TouchscreenInputHandler
 import me.magnum.melonds.ui.emulator.input.view.ToggleableImageView
 import me.magnum.melonds.ui.emulator.model.ConnectedControllersState
@@ -130,7 +131,13 @@ class RuntimeLayoutView(context: Context, attrs: AttributeSet? = null) : LayoutV
         systemInputHandler?.let {
             getLayoutComponentView(touchScreenComponent)?.view?.setOnTouchListener(TouchscreenInputHandler(it))
         }
-        getLayoutComponentView(nonTouchScreenComponent)?.view?.setOnTouchListener(null)
+        val systemInputHandler = systemInputHandler
+        val nonTouchScreenInputHandler = if (currentRuntimeLayout?.isSwipeDpadEnabled == true && systemInputHandler != null) {
+            SwipeDpadInputHandler(systemInputHandler, currentRuntimeLayout?.isHapticFeedbackEnabled == true, touchVibrator)
+        } else {
+            null
+        }
+        getLayoutComponentView(nonTouchScreenComponent)?.view?.setOnTouchListener(nonTouchScreenInputHandler)
     }
 
     private fun updateVisibility() {

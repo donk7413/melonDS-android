@@ -8,6 +8,7 @@ data class RuntimeInputLayoutConfiguration(
     val softInputBehaviour: SoftInputBehaviour,
     val softInputOpacity: Int,
     val isHapticFeedbackEnabled: Boolean,
+    val isSwipeDpadEnabled: Boolean,
     val layoutOrientation: LayoutConfiguration.LayoutOrientation,
     val layout: UILayout,
 )
