@@ -40,8 +40,9 @@
             app:iconSpaceReserved="false"
             app:showSeekBarValue="true"
             app:updatesContinuously="true"
+            app:seekBarIncrement="100"
             android:defaultValue="0"
-            android:max="1000" />
+            android:max="30000" />
 
     <SwitchPreference
             android:key="input_touch_haptic_feedback_enabled"
