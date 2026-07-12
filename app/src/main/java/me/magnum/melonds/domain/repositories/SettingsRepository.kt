@@ -59,6 +59,7 @@ interface SettingsRepository {
     fun getTouchHapticFeedbackStrength(): Int
     fun getSoftInputOpacity(): Flow<Int>
     fun isSwipeDpadEnabled(): Flow<Boolean>
+    fun getSwipeDpadReleaseLatency(): Flow<Int>
 
     fun isRetroAchievementsRichPresenceEnabled(): Boolean
     fun isRetroAchievementsHardcoreEnabled(): Boolean

@@ -200,6 +200,8 @@
     <string name="show_soft_input">Afficher l\'entrée logicielle</string>
     <string name="swipe_dpad">Glisser directionnel sur l\'écran non tactile</string>
     <string name="swipe_dpad_summary">Glissez le doigt sur l\'écran non tactile : croix directionnelle flottante. Tap = A, appui long = B</string>
+    <string name="swipe_dpad_release_latency">Délai de relâchement du glisser (ms)</string>
+    <string name="swipe_dpad_release_latency_summary">Les directions restent maintenues ce temps après avoir levé le doigt, pour pouvoir taper A sans interrompre le mouvement</string>
     <string name="vibrate_on_touch">Vibrer au toucher</string>
     <string name="vibration_strength">Force de vibration</string>
     <string name="soft_input_opacity">Opacité des entrées logicielles</string>

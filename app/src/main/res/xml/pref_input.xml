@@ -32,6 +32,17 @@
             app:iconSpaceReserved="false"
             android:defaultValue="false" />
 
+    <SeekBarPreference
+            android:key="input_swipe_dpad_release_latency"
+            android:title="@string/swipe_dpad_release_latency"
+            android:summary="@string/swipe_dpad_release_latency_summary"
+            android:dependency="input_swipe_dpad_enabled"
+            app:iconSpaceReserved="false"
+            app:showSeekBarValue="true"
+            app:updatesContinuously="true"
+            android:defaultValue="0"
+            android:max="1000" />
+
     <SwitchPreference
             android:key="input_touch_haptic_feedback_enabled"
             android:title="@string/vibrate_on_touch"

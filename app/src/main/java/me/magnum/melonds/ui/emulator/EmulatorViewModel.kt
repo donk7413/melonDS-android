@@ -612,9 +612,9 @@ class EmulatorViewModel @Inject constructor(
                 _layout,
                 _currentLayout,
                 settingsRepository.getSoftInputBehaviour(),
-                combine(settingsRepository.isTouchHapticFeedbackEnabled(), settingsRepository.isSwipeDpadEnabled(), ::Pair),
+                combine(settingsRepository.isTouchHapticFeedbackEnabled(), settingsRepository.isSwipeDpadEnabled(), settingsRepository.getSwipeDpadReleaseLatency(), ::Triple),
                 settingsRepository.getSoftInputOpacity(),
-            ) { layoutConfiguration, variant, softInputBehaviour, (isHapticFeedbackEnabled, isSwipeDpadEnabled), inputOpacity ->
+            ) { layoutConfiguration, variant, softInputBehaviour, (isHapticFeedbackEnabled, isSwipeDpadEnabled, swipeDpadReleaseLatency), inputOpacity ->
                 val layout = variant?.second
                 if (layoutConfiguration == null || layout == null) {
                     null
@@ -630,6 +630,7 @@ class EmulatorViewModel @Inject constructor(
                         softInputOpacity = opacity,
                         isHapticFeedbackEnabled = isHapticFeedbackEnabled,
                         isSwipeDpadEnabled = isSwipeDpadEnabled,
+                        swipeDpadReleaseLatency = swipeDpadReleaseLatency,
                         layoutOrientation = layoutConfiguration.orientation,
                         layout = layout,
                     )

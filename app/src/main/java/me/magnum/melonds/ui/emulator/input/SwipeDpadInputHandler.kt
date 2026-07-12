@@ -18,8 +18,19 @@ import kotlin.math.pow
  * dead zone) presses A briefly, and a long press (holding still) presses and holds B until the
  * finger is released. Directions can still be engaged while B is held by dragging the finger
  * beyond the dead zone.
+ *
+ * When [releaseLatencyMs] is greater than 0, directions are not released immediately when the
+ * finger is lifted. Instead, they are held for that duration, allowing the finger to be lifted
+ * briefly (to tap A, for example) without interrupting the movement. Touching the view again
+ * during that window keeps the directions held, and dragging in a new direction switches to it
+ * instantly.
  */
-class SwipeDpadInputHandler(inputListener: IInputListener, enableHapticFeedback: Boolean, touchVibrator: TouchVibrator) : FeedbackInputHandler(inputListener, enableHapticFeedback, touchVibrator) {
+class SwipeDpadInputHandler(
+    inputListener: IInputListener,
+    enableHapticFeedback: Boolean,
+    touchVibrator: TouchVibrator,
+    private val releaseLatencyMs: Long,
+) : FeedbackInputHandler(inputListener, enableHapticFeedback, touchVibrator) {
 
     companion object {
         private const val DEAD_ZONE_DP = 24f
@@ -42,10 +53,12 @@ class SwipeDpadInputHandler(inputListener: IInputListener, enableHapticFeedback:
     private var originX = 0f
     private var originY = 0f
     private var hasMovedBeyondDeadZone = false
+    private var isRetainingDirections = false
     private var isLongPressInputPressed = false
     private var isTapInputPressed = false
     private var longPressRunnable: Runnable? = null
     private var tapReleaseRunnable: Runnable? = null
+    private var directionsReleaseRunnable: Runnable? = null
     private val pressedInputs = mutableListOf<Input>()
     private val newPressedInputs = mutableListOf<Input>()
     // Reusable input list to avoid memory allocations
@@ -53,6 +66,7 @@ class SwipeDpadInputHandler(inputListener: IInputListener, enableHapticFeedback:
 
     override fun onTouch(v: View, event: MotionEvent): Boolean {
         newPressedInputs.clear()
+        var retainPressedInputs = false
 
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
@@ -60,7 +74,10 @@ class SwipeDpadInputHandler(inputListener: IInputListener, enableHapticFeedback:
                 originY = event.y
                 hasMovedBeyondDeadZone = false
                 releaseTapInput(v)
+                // Keep the retained directions held while the new gesture starts
+                cancelDelayedDirectionsRelease(v)
                 scheduleLongPress(v)
+                retainPressedInputs = isRetainingDirections
             }
             MotionEvent.ACTION_MOVE -> {
                 val deltaX = event.x - originX
@@ -69,6 +86,8 @@ class SwipeDpadInputHandler(inputListener: IInputListener, enableHapticFeedback:
                 if (deltaX.pow(2) + deltaY.pow(2) >= deadZoneSquared) {
                     if (!hasMovedBeyondDeadZone) {
                         hasMovedBeyondDeadZone = true
+                        // The gesture is now driving the directions again
+                        isRetainingDirections = false
                         // Moving before the long press triggers makes the gesture a pure swipe. If
                         // the long press has already triggered, B stays held while the directions
                         // are engaged
@@ -78,6 +97,10 @@ class SwipeDpadInputHandler(inputListener: IInputListener, enableHapticFeedback:
                     // Round to the nearest sector so that each sector is centered on its direction
                     val sector = Math.floorMod(Math.round(angle / 45.0).toInt(), SECTOR_INPUTS.size)
                     newPressedInputs.addAll(SECTOR_INPUTS[sector])
+                } else {
+                    // Small movements while the finger is within the dead zone must not release
+                    // the directions retained from the previous gesture
+                    retainPressedInputs = isRetainingDirections
                 }
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
@@ -89,7 +112,17 @@ class SwipeDpadInputHandler(inputListener: IInputListener, enableHapticFeedback:
                 } else if (!hasMovedBeyondDeadZone && event.action == MotionEvent.ACTION_UP) {
                     pressTapInput(v)
                 }
+
+                if (releaseLatencyMs > 0 && pressedInputs.isNotEmpty()) {
+                    isRetainingDirections = true
+                    scheduleDelayedDirectionsRelease(v)
+                    retainPressedInputs = true
+                }
             }
+        }
+
+        if (retainPressedInputs) {
+            return true
         }
 
         tempInputList.clear()
@@ -136,6 +169,30 @@ class SwipeDpadInputHandler(inputListener: IInputListener, enableHapticFeedback:
         longPressRunnable?.let {
             v.removeCallbacks(it)
             longPressRunnable = null
+        }
+    }
+
+    private fun scheduleDelayedDirectionsRelease(v: View) {
+        cancelDelayedDirectionsRelease(v)
+        val runnable = Runnable {
+            directionsReleaseRunnable = null
+            isRetainingDirections = false
+            if (pressedInputs.isNotEmpty()) {
+                pressedInputs.forEach {
+                    inputListener.onKeyReleased(it)
+                }
+                pressedInputs.clear()
+                performHapticFeedback(v, HapticFeedbackType.KEY_RELEASE)
+            }
+        }
+        directionsReleaseRunnable = runnable
+        v.postDelayed(runnable, releaseLatencyMs)
+    }
+
+    private fun cancelDelayedDirectionsRelease(v: View) {
+        directionsReleaseRunnable?.let {
+            v.removeCallbacks(it)
+            directionsReleaseRunnable = null
         }
     }
 

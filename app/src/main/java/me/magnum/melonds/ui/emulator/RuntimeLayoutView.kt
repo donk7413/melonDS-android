@@ -132,8 +132,9 @@ class RuntimeLayoutView(context: Context, attrs: AttributeSet? = null) : LayoutV
             getLayoutComponentView(touchScreenComponent)?.view?.setOnTouchListener(TouchscreenInputHandler(it))
         }
         val systemInputHandler = systemInputHandler
+        val currentRuntimeLayout = currentRuntimeLayout
         val nonTouchScreenInputHandler = if (currentRuntimeLayout?.isSwipeDpadEnabled == true && systemInputHandler != null) {
-            SwipeDpadInputHandler(systemInputHandler, currentRuntimeLayout?.isHapticFeedbackEnabled == true, touchVibrator)
+            SwipeDpadInputHandler(systemInputHandler, currentRuntimeLayout.isHapticFeedbackEnabled, touchVibrator, currentRuntimeLayout.swipeDpadReleaseLatency.toLong())
         } else {
             null
         }

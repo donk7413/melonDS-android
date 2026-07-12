@@ -474,6 +474,12 @@ class SharedPreferencesSettingsRepository(
         }
     }
 
+    override fun getSwipeDpadReleaseLatency(): Flow<Int> {
+        return getOrCreatePreferenceSharedFlow("input_swipe_dpad_release_latency") {
+            preferences.getInt("input_swipe_dpad_release_latency", 0)
+        }
+    }
+
     override fun isRetroAchievementsRichPresenceEnabled(): Boolean {
         return preferences.getBoolean("ra_rich_presence", true)
     }
