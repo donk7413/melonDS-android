@@ -199,7 +199,7 @@
     <string name="key_mapping_summary">Assigner des touches aux entrées de la manette</string>
     <string name="show_soft_input">Afficher l\'entrée logicielle</string>
     <string name="swipe_dpad">Glisser directionnel sur l\'écran non tactile</string>
-    <string name="swipe_dpad_summary">Glissez le doigt sur l\'écran non tactile pour l\'utiliser comme croix directionnelle flottante</string>
+    <string name="swipe_dpad_summary">Glissez le doigt sur l\'écran non tactile : croix directionnelle flottante. Tap = A, appui long = B</string>
     <string name="vibrate_on_touch">Vibrer au toucher</string>
     <string name="vibration_strength">Force de vibration</string>
     <string name="soft_input_opacity">Opacité des entrées logicielles</string>
