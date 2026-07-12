@@ -258,6 +258,12 @@
     <string name="soft_input_behaviour">Soft input behaviour</string>
     <string name="swipe_dpad">Directional swipe on non-touch screen</string>
     <string name="swipe_dpad_summary">Slide your finger on the non-touch screen to use it as a floating d-pad. Tap for A, long-press for B</string>
+    <string name="export">Export</string>
+    <string name="action_layout_import">Import layout</string>
+    <string name="layout_exported">Layout exported</string>
+    <string name="layout_export_failed">Failed to export layout</string>
+    <string name="layout_imported">Layout imported</string>
+    <string name="layout_import_failed">Failed to import layout</string>
     <string name="swipe_dpad_release_latency">Swipe release delay (ms)</string>
     <string name="swipe_dpad_release_latency_summary">Directions stay held for this long after lifting the finger, so you can tap A without interrupting the movement</string>
     <string name="vibrate_on_touch">Vibrate on touch</string>

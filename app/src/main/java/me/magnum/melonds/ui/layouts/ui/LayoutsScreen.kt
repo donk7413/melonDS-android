@@ -1,6 +1,7 @@
 package me.magnum.melonds.ui.layouts.ui
 
 import android.content.Intent
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -36,6 +37,7 @@ import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.rememberScaffoldState
 import androidx.compose.runtime.Composable
@@ -44,6 +46,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,7 +69,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.launch
 import me.magnum.melonds.R
+import me.magnum.melonds.common.Permission
+import me.magnum.melonds.common.contracts.CreateFileContract
+import me.magnum.melonds.common.contracts.FilePickerContract
 import me.magnum.melonds.domain.model.layout.LayoutConfiguration
 import me.magnum.melonds.ui.common.MelonPreviewSet
 import me.magnum.melonds.ui.layouteditor.LayoutEditorActivity
@@ -80,10 +87,31 @@ fun LayoutsScreen(
     onNavigateBack: () -> Unit,
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     val layouts by viewModel.layouts.collectAsStateWithLifecycle()
     val selectedLayout by viewModel.selectedLayoutId.collectAsStateWithLifecycle()
     val layoutEditorLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
+
+    var layoutPendingExport by remember { mutableStateOf<LayoutConfiguration?>(null) }
+    val layoutExportLauncher = rememberLauncherForActivityResult(CreateFileContract()) { uri ->
+        val layout = layoutPendingExport
+        layoutPendingExport = null
+        if (uri != null && layout != null) {
+            coroutineScope.launch {
+                val messageRes = if (viewModel.exportLayout(layout, uri)) R.string.layout_exported else R.string.layout_export_failed
+                Toast.makeText(context, messageRes, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    val layoutImportLauncher = rememberLauncherForActivityResult(FilePickerContract(Permission.READ)) { uri ->
+        if (uri != null) {
+            coroutineScope.launch {
+                val messageRes = if (viewModel.importLayout(uri)) R.string.layout_imported else R.string.layout_import_failed
+                Toast.makeText(context, messageRes, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     LayoutsScreenContent(
         layouts = layouts ?: emptyList(),
@@ -93,10 +121,17 @@ fun LayoutsScreen(
             val intent = Intent(context, LayoutEditorActivity::class.java)
             layoutEditorLauncher.launch(intent)
         },
+        onImportLayout = {
+            layoutImportLauncher.launch(null to null)
+        },
         onEditLayout = { layoutId ->
             val intent = Intent(context, LayoutEditorActivity::class.java)
             intent.putExtra(LayoutEditorActivity.KEY_LAYOUT_ID, layoutId.toString())
             layoutEditorLauncher.launch(intent)
+        },
+        onExportLayout = { layout ->
+            layoutPendingExport = layout
+            layoutExportLauncher.launch("${layout.name ?: "layout"}.json")
         },
         onDeleteLayout = viewModel::deleteLayout,
         onUndoDelete = viewModel::addLayout,
@@ -110,7 +145,9 @@ private fun LayoutsScreenContent(
     selectedLayoutId: UUID?,
     onLayoutSelected: (UUID?) -> Unit,
     onCreateLayout: () -> Unit,
+    onImportLayout: () -> Unit,
     onEditLayout: (UUID) -> Unit,
+    onExportLayout: (LayoutConfiguration) -> Unit,
     onDeleteLayout: (LayoutConfiguration) -> Unit,
     onUndoDelete: (LayoutConfiguration) -> Unit,
     onBackClick: () -> Unit,
@@ -145,6 +182,12 @@ private fun LayoutsScreenContent(
                     windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top),
                     actions = {
                         CompositionLocalProvider(LocalContentAlpha provides ContentAlpha.high) {
+                            IconButton(onClick = onImportLayout) {
+                                Icon(
+                                    painter = rememberVectorPainter(Icons.Default.FileDownload),
+                                    contentDescription = stringResource(R.string.action_layout_import),
+                                )
+                            }
                             IconButton(onClick = onCreateLayout) {
                                 Icon(
                                     painter = rememberVectorPainter(Icons.Default.Add),
@@ -174,6 +217,7 @@ private fun LayoutsScreenContent(
                     isSelected = layout.id == selectedLayoutId,
                     onLayoutSelected = { onLayoutSelected(layout.id) },
                     onEditLayout = { layout.id?.let(onEditLayout) },
+                    onExportLayout = { onExportLayout(layout) },
                     onDeleteLayout = {
                         deleteLayoutEvent.tryEmit(layout)
                         onDeleteLayout(layout)
@@ -204,6 +248,7 @@ private fun LayoutItem(
     isSelected: Boolean,
     onLayoutSelected: () -> Unit,
     onEditLayout: () -> Unit,
+    onExportLayout: () -> Unit,
     onDeleteLayout: () -> Unit,
 ) {
     var showMenu by remember { mutableStateOf(false) }
@@ -276,6 +321,15 @@ private fun LayoutItem(
                     DropdownMenuItem(
                         onClick = {
                             showMenu = false
+                            onExportLayout()
+                        },
+                    ) {
+                        Text(stringResource(R.string.export))
+                    }
+
+                    DropdownMenuItem(
+                        onClick = {
+                            showMenu = false
                             onDeleteLayout()
                         },
                     ) {
@@ -319,7 +373,9 @@ private fun PreviewLayoutsScreen() {
             selectedLayoutId = LayoutConfiguration.DEFAULT_ID,
             onLayoutSelected = { },
             onCreateLayout = { },
+            onImportLayout = { },
             onEditLayout = { },
+            onExportLayout = { },
             onDeleteLayout = { },
             onUndoDelete = { },
             onBackClick = { }
