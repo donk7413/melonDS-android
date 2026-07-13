@@ -37,6 +37,7 @@ import androidx.compose.material.Text
 import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AddToHomeScreen
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -73,6 +74,7 @@ fun RomHeaderUi(
     pagerState: PagerState,
     initialFocusRequester: FocusRequester,
     onLaunchRom: () -> Unit,
+    onPinRomToHomeScreen: () -> Unit,
     onNavigateBack: () -> Unit,
     onTabClicked: (RomDetailsTab) -> Unit,
 ) {
@@ -92,6 +94,7 @@ fun RomHeaderUi(
                         rom = rom,
                         initialFocusRequester = initialFocusRequester,
                         onLaunchRom = onLaunchRom,
+                        onPinRomToHomeScreen = onPinRomToHomeScreen,
                         onNavigateBack = onNavigateBack,
                     )
                 } else {
@@ -99,6 +102,7 @@ fun RomHeaderUi(
                         rom = rom,
                         initialFocusRequester = initialFocusRequester,
                         onLaunchRom = onLaunchRom,
+                        onPinRomToHomeScreen = onPinRomToHomeScreen,
                         onNavigateBack = onNavigateBack,
                     )
                 }
@@ -146,6 +150,7 @@ private fun PortraitTopBar(
     rom: Rom,
     initialFocusRequester: FocusRequester,
     onLaunchRom: () -> Unit,
+    onPinRomToHomeScreen: () -> Unit,
     onNavigateBack: () -> Unit,
 ) {
     TopAppBar(
@@ -175,6 +180,14 @@ private fun PortraitTopBar(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
             }
         },
+        actions = {
+            IconButton(onClick = onPinRomToHomeScreen) {
+                Icon(
+                    imageVector = Icons.Default.AddToHomeScreen,
+                    contentDescription = stringResource(R.string.pin_rom_to_home_screen),
+                )
+            }
+        },
     )
 
     Row(
@@ -196,6 +209,7 @@ private fun ColumnScope.LandscapeTopBar(
     rom: Rom,
     initialFocusRequester: FocusRequester,
     onLaunchRom: () -> Unit,
+    onPinRomToHomeScreen: () -> Unit,
     onNavigateBack: () -> Unit,
 ) {
     TopAppBar(
@@ -230,6 +244,14 @@ private fun ColumnScope.LandscapeTopBar(
         navigationIcon = {
             IconButton(onClick = onNavigateBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
+            }
+        },
+        actions = {
+            IconButton(onClick = onPinRomToHomeScreen) {
+                Icon(
+                    imageVector = Icons.Default.AddToHomeScreen,
+                    contentDescription = stringResource(R.string.pin_rom_to_home_screen),
+                )
             }
         },
     )
@@ -297,6 +319,7 @@ private fun PreviewRomHeaderUi() {
             pagerState = pagerState,
             initialFocusRequester = remember { FocusRequester() },
             onLaunchRom = { },
+            onPinRomToHomeScreen = { },
             onNavigateBack = { }
         ) {
             coroutineScope.launch {

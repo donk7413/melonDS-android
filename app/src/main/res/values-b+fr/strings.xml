@@ -200,6 +200,8 @@
     <string name="show_soft_input">Afficher l\'entrée logicielle</string>
     <string name="swipe_dpad">Glisser directionnel sur l\'écran non tactile</string>
     <string name="swipe_dpad_summary">Glissez le doigt sur l\'écran non tactile : croix directionnelle flottante. Tap = A, appui long = B</string>
+    <string name="pin_rom_to_home_screen">Épingler sur l\'écran d\'accueil</string>
+    <string name="pin_shortcut_not_supported">Votre écran d\'accueil ne prend pas en charge les raccourcis épinglés</string>
     <string name="export">Exporter</string>
     <string name="action_layout_import">Importer une disposition</string>
     <string name="layout_exported">Disposition exportée</string>

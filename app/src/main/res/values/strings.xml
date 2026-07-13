@@ -258,6 +258,8 @@
     <string name="soft_input_behaviour">Soft input behaviour</string>
     <string name="swipe_dpad">Directional swipe on non-touch screen</string>
     <string name="swipe_dpad_summary">Slide your finger on the non-touch screen to use it as a floating d-pad. Tap for A, long-press for B</string>
+    <string name="pin_rom_to_home_screen">Pin to home screen</string>
+    <string name="pin_shortcut_not_supported">Your launcher does not support pinned shortcuts</string>
     <string name="export">Export</string>
     <string name="action_layout_import">Import layout</string>
     <string name="layout_exported">Layout exported</string>
