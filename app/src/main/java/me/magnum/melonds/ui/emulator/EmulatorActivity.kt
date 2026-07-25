@@ -807,10 +807,13 @@ class EmulatorActivity : AppCompatActivity() {
 
     private fun updateRendererScreenAreas() {
         if (binding.viewLayoutControls.isFullscreen()) {
-            // Only the top screen is rendered, expanded to fill the view while keeping its aspect ratio
+            // A single screen is rendered, expanded to fill the view while keeping its aspect ratio. Swapping
+            // screens toggles which screen is displayed
+            val fullscreenRect = binding.viewLayoutControls.getFullscreenScreenRect()
+            val isBottomScreenDisplayed = binding.viewLayoutControls.areScreensSwapped()
             mainScreenRenderer.updateScreenAreas(
-                getFullscreenScreenRect(),
-                null,
+                if (isBottomScreenDisplayed) null else fullscreenRect,
+                if (isBottomScreenDisplayed) fullscreenRect else null,
                 1f,
                 1f,
                 false,
@@ -818,7 +821,11 @@ class EmulatorActivity : AppCompatActivity() {
             )
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                window?.systemGestureExclusionRects = emptyList()
+                window?.systemGestureExclusionRects = if (isBottomScreenDisplayed) {
+                    listOf(android.graphics.Rect(fullscreenRect.x, fullscreenRect.y, fullscreenRect.right, fullscreenRect.bottom))
+                } else {
+                    emptyList()
+                }
             }
             return
         }
@@ -848,18 +855,6 @@ class EmulatorActivity : AppCompatActivity() {
         }
     }
 
-    private fun getFullscreenScreenRect(): Rect {
-        val containerWidth = binding.viewLayoutControls.width
-        val containerHeight = binding.viewLayoutControls.height
-        val screenAspectRatio = 256f / 192f
-        return if (containerWidth / screenAspectRatio <= containerHeight) {
-            val screenHeight = (containerWidth / screenAspectRatio).toInt()
-            Rect(0, (containerHeight - screenHeight) / 2, containerWidth, screenHeight)
-        } else {
-            val screenWidth = (containerHeight * screenAspectRatio).toInt()
-            Rect((containerWidth - screenWidth) / 2, 0, screenWidth, containerHeight)
-        }
-    }
 
     private fun setupInputHandling(controllerConfiguration: ControllerConfiguration) {
         nativeInputListener = InputProcessor(controllerConfiguration, melonTouchHandler, frontendInputHandler)

@@ -2,11 +2,13 @@ package me.magnum.melonds.ui.emulator
 
 import android.content.Context
 import android.util.AttributeSet
+import android.view.View
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import dagger.hilt.android.AndroidEntryPoint
 import me.magnum.melonds.common.vibration.TouchVibrator
 import me.magnum.melonds.domain.model.Input
+import me.magnum.melonds.domain.model.Rect
 import me.magnum.melonds.domain.model.input.SoftInputBehaviour
 import me.magnum.melonds.domain.model.layout.LayoutComponent
 import me.magnum.melonds.ui.common.LayoutView
@@ -35,6 +37,7 @@ class RuntimeLayoutView(context: Context, attrs: AttributeSet? = null) : LayoutV
     private var isSoftInputVisible = true
     private var areScreensSwapped = false
     private var isFullscreen = false
+    private var fullscreenTouchView: View? = null
     private var connectedControllersState: ConnectedControllersState = ConnectedControllersState.NoControllers
 
     fun setFrontendInputHandler(frontendInputHandler: FrontendInputHandler) {
@@ -150,16 +153,59 @@ class RuntimeLayoutView(context: Context, attrs: AttributeSet? = null) : LayoutV
                 null
             }
         }
-        val touchScreenInputHandler = if (isFullscreen) {
-            // The touch screen is not rendered in fullscreen. Treat its area like the non-touch screen to avoid stray touchscreen presses
-            createSwipeDpadInputHandler()
-        } else if (systemInputHandler != null) {
-            TouchscreenInputHandler(systemInputHandler)
+        if (isFullscreen) {
+            // The whole view is covered by a single screen. Screen touches are handled by a dedicated full-size overlay
+            getLayoutComponentView(touchScreenComponent)?.view?.setOnTouchListener(null)
+            getLayoutComponentView(nonTouchScreenComponent)?.view?.setOnTouchListener(null)
+            val overlayInputHandler = if (areScreensSwapped && systemInputHandler != null) {
+                // The screen displayed in fullscreen is the touch screen
+                TouchscreenInputHandler(systemInputHandler) { getFullscreenScreenRect() }
+            } else {
+                createSwipeDpadInputHandler()
+            }
+            getOrCreateFullscreenTouchView().setOnTouchListener(overlayInputHandler)
         } else {
-            null
+            removeFullscreenTouchView()
+            val touchScreenInputHandler = if (systemInputHandler != null) {
+                TouchscreenInputHandler(systemInputHandler)
+            } else {
+                null
+            }
+            getLayoutComponentView(touchScreenComponent)?.view?.setOnTouchListener(touchScreenInputHandler)
+            getLayoutComponentView(nonTouchScreenComponent)?.view?.setOnTouchListener(createSwipeDpadInputHandler())
         }
-        getLayoutComponentView(touchScreenComponent)?.view?.setOnTouchListener(touchScreenInputHandler)
-        getLayoutComponentView(nonTouchScreenComponent)?.view?.setOnTouchListener(createSwipeDpadInputHandler())
+    }
+
+    fun getFullscreenScreenRect(): Rect {
+        val screenAspectRatio = 256f / 192f
+        return if (width / screenAspectRatio <= height) {
+            val screenHeight = (width / screenAspectRatio).toInt()
+            Rect(0, (height - screenHeight) / 2, width, screenHeight)
+        } else {
+            val screenWidth = (height * screenAspectRatio).toInt()
+            Rect((width - screenWidth) / 2, 0, screenWidth, height)
+        }
+    }
+
+    private fun getOrCreateFullscreenTouchView(): View {
+        val existingView = fullscreenTouchView
+        if (existingView != null && existingView.parent == this) {
+            return existingView
+        }
+
+        val touchView = View(context)
+        // Place the overlay above the screens but below the soft input buttons
+        val screenViewCount = getLayoutComponentViews().count { it.component.isScreen() }
+        addView(touchView, screenViewCount, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        fullscreenTouchView = touchView
+        return touchView
+    }
+
+    private fun removeFullscreenTouchView() {
+        fullscreenTouchView?.let {
+            removeView(it)
+            fullscreenTouchView = null
+        }
     }
 
     private fun updateVisibility() {

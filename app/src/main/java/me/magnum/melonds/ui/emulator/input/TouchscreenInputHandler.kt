@@ -7,8 +7,14 @@ import android.view.View
 import me.magnum.melonds.MelonEmulator.onScreenRelease
 import me.magnum.melonds.domain.model.Input
 import me.magnum.melonds.domain.model.Point
+import me.magnum.melonds.domain.model.Rect
 
-class TouchscreenInputHandler(inputListener: IInputListener) : BaseInputHandler(inputListener) {
+/**
+ * Translates touches on a view into DS touchscreen input. By default the whole view maps to the
+ * touchscreen. If [touchRectProvider] is provided, the returned rect (in view coordinates) is
+ * used as the touchscreen area instead.
+ */
+class TouchscreenInputHandler(inputListener: IInputListener, private val touchRectProvider: (() -> Rect)? = null) : BaseInputHandler(inputListener) {
     private val touchPoint: Point = Point()
 
     @SuppressLint("ClickableViewAccessibility")
@@ -45,8 +51,14 @@ class TouchscreenInputHandler(inputListener: IInputListener) : BaseInputHandler(
         averageTouchX /= event.pointerCount
         averageTouchY /= event.pointerCount
 
-        touchPoint.x = (averageTouchX / viewWidth * 256).toInt().coerceIn(0, 255)
-        touchPoint.y = (averageTouchY / viewHeight * 192).toInt().coerceIn(0, 191)
+        val touchRect = touchRectProvider?.invoke()
+        if (touchRect != null && touchRect.width > 0 && touchRect.height > 0) {
+            touchPoint.x = ((averageTouchX - touchRect.x) / touchRect.width * 256).toInt().coerceIn(0, 255)
+            touchPoint.y = ((averageTouchY - touchRect.y) / touchRect.height * 192).toInt().coerceIn(0, 191)
+        } else {
+            touchPoint.x = (averageTouchX / viewWidth * 256).toInt().coerceIn(0, 255)
+            touchPoint.y = (averageTouchY / viewHeight * 192).toInt().coerceIn(0, 191)
+        }
         return touchPoint
     }
 }
