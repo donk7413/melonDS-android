@@ -34,6 +34,7 @@ class RuntimeLayoutView(context: Context, attrs: AttributeSet? = null) : LayoutV
     private var systemInputHandler: IInputListener? = null
     private var isSoftInputVisible = true
     private var areScreensSwapped = false
+    private var isFullscreen = false
     private var connectedControllersState: ConnectedControllersState = ConnectedControllersState.NoControllers
 
     fun setFrontendInputHandler(frontendInputHandler: FrontendInputHandler) {
@@ -66,6 +67,16 @@ class RuntimeLayoutView(context: Context, attrs: AttributeSet? = null) : LayoutV
         return areScreensSwapped
     }
 
+    fun toggleFullscreen() {
+        isFullscreen = !isFullscreen
+        setLayoutComponentToggleState(LayoutComponent.BUTTON_TOGGLE_FULLSCREEN, isFullscreen)
+        updateScreenInputs()
+    }
+
+    fun isFullscreen(): Boolean {
+        return isFullscreen
+    }
+
     fun setLayoutComponentToggleState(layoutComponent: LayoutComponent, isEnabled: Boolean) {
         val toggleableImageView = getLayoutComponentView(layoutComponent)?.view as? ToggleableImageView ?: return
         toggleableImageView.setToggleState(isEnabled)
@@ -77,6 +88,7 @@ class RuntimeLayoutView(context: Context, attrs: AttributeSet? = null) : LayoutV
         updateInputs()
         updateVisibility()
         setLayoutComponentToggleState(LayoutComponent.BUTTON_TOGGLE_SOFT_INPUT, isSoftInputVisible)
+        setLayoutComponentToggleState(LayoutComponent.BUTTON_TOGGLE_FULLSCREEN, isFullscreen)
     }
 
     private fun updateInputs() {
@@ -108,6 +120,7 @@ class RuntimeLayoutView(context: Context, attrs: AttributeSet? = null) : LayoutV
             getLayoutComponentView(LayoutComponent.BUTTON_SWAP_SCREENS)?.view?.setOnTouchListener(SingleButtonInputHandler(it, Input.SWAP_SCREENS, enableHapticFeedback, touchVibrator))
             getLayoutComponentView(LayoutComponent.BUTTON_QUICK_SAVE)?.view?.setOnTouchListener(SingleButtonInputHandler(it, Input.QUICK_SAVE, enableHapticFeedback, touchVibrator))
             getLayoutComponentView(LayoutComponent.BUTTON_QUICK_LOAD)?.view?.setOnTouchListener(SingleButtonInputHandler(it, Input.QUICK_LOAD, enableHapticFeedback, touchVibrator))
+            getLayoutComponentView(LayoutComponent.BUTTON_TOGGLE_FULLSCREEN)?.view?.setOnTouchListener(SingleButtonInputHandler(it, Input.TOGGLE_FULLSCREEN, enableHapticFeedback, touchVibrator))
             getLayoutComponentView(LayoutComponent.BUTTON_REWIND)?.view?.setOnTouchListener(SingleButtonInputHandler(it, Input.REWIND, enableHapticFeedback, touchVibrator))
         }
 
@@ -128,17 +141,25 @@ class RuntimeLayoutView(context: Context, attrs: AttributeSet? = null) : LayoutV
         } else {
             LayoutComponent.BOTTOM_SCREEN to LayoutComponent.TOP_SCREEN
         }
-        systemInputHandler?.let {
-            getLayoutComponentView(touchScreenComponent)?.view?.setOnTouchListener(TouchscreenInputHandler(it))
-        }
         val systemInputHandler = systemInputHandler
         val currentRuntimeLayout = currentRuntimeLayout
-        val nonTouchScreenInputHandler = if (currentRuntimeLayout?.isSwipeDpadEnabled == true && systemInputHandler != null) {
-            SwipeDpadInputHandler(systemInputHandler, currentRuntimeLayout.isHapticFeedbackEnabled, touchVibrator, currentRuntimeLayout.swipeDpadReleaseLatency.toLong())
+        val createSwipeDpadInputHandler = {
+            if (currentRuntimeLayout?.isSwipeDpadEnabled == true && systemInputHandler != null) {
+                SwipeDpadInputHandler(systemInputHandler, currentRuntimeLayout.isHapticFeedbackEnabled, touchVibrator, currentRuntimeLayout.swipeDpadReleaseLatency.toLong())
+            } else {
+                null
+            }
+        }
+        val touchScreenInputHandler = if (isFullscreen) {
+            // The touch screen is not rendered in fullscreen. Treat its area like the non-touch screen to avoid stray touchscreen presses
+            createSwipeDpadInputHandler()
+        } else if (systemInputHandler != null) {
+            TouchscreenInputHandler(systemInputHandler)
         } else {
             null
         }
-        getLayoutComponentView(nonTouchScreenComponent)?.view?.setOnTouchListener(nonTouchScreenInputHandler)
+        getLayoutComponentView(touchScreenComponent)?.view?.setOnTouchListener(touchScreenInputHandler)
+        getLayoutComponentView(nonTouchScreenComponent)?.view?.setOnTouchListener(createSwipeDpadInputHandler())
     }
 
     private fun updateVisibility() {

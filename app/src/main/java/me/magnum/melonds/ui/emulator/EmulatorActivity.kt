@@ -239,6 +239,11 @@ class EmulatorActivity : AppCompatActivity() {
         override fun onRewind() {
             viewModel.onOpenRewind()
         }
+
+        override fun onToggleFullscreen() {
+            binding.viewLayoutControls.toggleFullscreen()
+            updateRendererScreenAreas()
+        }
     }
     private val settingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         viewModel.onSettingsChanged()
@@ -801,6 +806,23 @@ class EmulatorActivity : AppCompatActivity() {
     }
 
     private fun updateRendererScreenAreas() {
+        if (binding.viewLayoutControls.isFullscreen()) {
+            // Only the top screen is rendered, expanded to fill the view while keeping its aspect ratio
+            mainScreenRenderer.updateScreenAreas(
+                getFullscreenScreenRect(),
+                null,
+                1f,
+                1f,
+                false,
+                false,
+            )
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                window?.systemGestureExclusionRects = emptyList()
+            }
+            return
+        }
+
         val (topScreen, bottomScreen) = if (binding.viewLayoutControls.areScreensSwapped()) {
             LayoutComponent.BOTTOM_SCREEN to LayoutComponent.TOP_SCREEN
         } else {
@@ -823,6 +845,19 @@ class EmulatorActivity : AppCompatActivity() {
                 listOf(rect)
             }
             window?.systemGestureExclusionRects = touchScreenArea.orEmpty()
+        }
+    }
+
+    private fun getFullscreenScreenRect(): Rect {
+        val containerWidth = binding.viewLayoutControls.width
+        val containerHeight = binding.viewLayoutControls.height
+        val screenAspectRatio = 256f / 192f
+        return if (containerWidth / screenAspectRatio <= containerHeight) {
+            val screenHeight = (containerWidth / screenAspectRatio).toInt()
+            Rect(0, (containerHeight - screenHeight) / 2, containerWidth, screenHeight)
+        } else {
+            val screenWidth = (containerHeight * screenAspectRatio).toInt()
+            Rect((containerWidth - screenWidth) / 2, 0, screenWidth, containerHeight)
         }
     }
 
