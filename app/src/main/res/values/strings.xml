@@ -259,6 +259,8 @@
     <string name="swipe_dpad">Directional swipe on non-touch screen</string>
     <string name="swipe_dpad_summary">Slide your finger on the non-touch screen to use it as a floating d-pad. Tap for A, long-press for B</string>
     <string name="input_toggle_fullscreen">Fullscreen (hide bottom screen)</string>
+    <string name="fullscreen_stretch">Stretch in fullscreen</string>
+    <string name="fullscreen_stretch_summary">In fullscreen mode, stretch the screen to fill the whole display instead of keeping its aspect ratio</string>
     <string name="pin_rom_to_home_screen">Pin to home screen</string>
     <string name="pin_shortcut_not_supported">Your launcher does not support pinned shortcuts</string>
     <string name="export">Export</string>

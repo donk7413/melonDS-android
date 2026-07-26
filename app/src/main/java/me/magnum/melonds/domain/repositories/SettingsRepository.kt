@@ -60,6 +60,7 @@ interface SettingsRepository {
     fun getSoftInputOpacity(): Flow<Int>
     fun isSwipeDpadEnabled(): Flow<Boolean>
     fun getSwipeDpadReleaseLatency(): Flow<Int>
+    fun isFullscreenStretchEnabled(): Flow<Boolean>
 
     fun isRetroAchievementsRichPresenceEnabled(): Boolean
     fun isRetroAchievementsHardcoreEnabled(): Boolean

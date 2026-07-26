@@ -10,6 +10,7 @@ data class RuntimeInputLayoutConfiguration(
     val isHapticFeedbackEnabled: Boolean,
     val isSwipeDpadEnabled: Boolean,
     val swipeDpadReleaseLatency: Int,
+    val isFullscreenStretchEnabled: Boolean,
     val layoutOrientation: LayoutConfiguration.LayoutOrientation,
     val layout: UILayout,
 )

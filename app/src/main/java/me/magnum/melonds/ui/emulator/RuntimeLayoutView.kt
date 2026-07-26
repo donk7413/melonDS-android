@@ -177,6 +177,10 @@ class RuntimeLayoutView(context: Context, attrs: AttributeSet? = null) : LayoutV
     }
 
     fun getFullscreenScreenRect(): Rect {
+        if (currentRuntimeLayout?.isFullscreenStretchEnabled == true) {
+            return Rect(0, 0, width, height)
+        }
+
         val screenAspectRatio = 256f / 192f
         return if (width / screenAspectRatio <= height) {
             val screenHeight = (width / screenAspectRatio).toInt()

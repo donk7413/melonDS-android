@@ -45,6 +45,13 @@
             android:max="30000" />
 
     <SwitchPreference
+            android:key="input_fullscreen_stretch"
+            android:title="@string/fullscreen_stretch"
+            android:summary="@string/fullscreen_stretch_summary"
+            app:iconSpaceReserved="false"
+            android:defaultValue="false" />
+
+    <SwitchPreference
             android:key="input_touch_haptic_feedback_enabled"
             android:title="@string/vibrate_on_touch"
             app:iconSpaceReserved="false"

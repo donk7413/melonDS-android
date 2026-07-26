@@ -612,9 +612,15 @@ class EmulatorViewModel @Inject constructor(
                 _layout,
                 _currentLayout,
                 settingsRepository.getSoftInputBehaviour(),
-                combine(settingsRepository.isTouchHapticFeedbackEnabled(), settingsRepository.isSwipeDpadEnabled(), settingsRepository.getSwipeDpadReleaseLatency(), ::Triple),
+                combine(
+                    settingsRepository.isTouchHapticFeedbackEnabled(),
+                    settingsRepository.isSwipeDpadEnabled(),
+                    settingsRepository.getSwipeDpadReleaseLatency(),
+                    settingsRepository.isFullscreenStretchEnabled(),
+                    ::RuntimeInputSettings,
+                ),
                 settingsRepository.getSoftInputOpacity(),
-            ) { layoutConfiguration, variant, softInputBehaviour, (isHapticFeedbackEnabled, isSwipeDpadEnabled, swipeDpadReleaseLatency), inputOpacity ->
+            ) { layoutConfiguration, variant, softInputBehaviour, inputSettings, inputOpacity ->
                 val layout = variant?.second
                 if (layoutConfiguration == null || layout == null) {
                     null
@@ -628,9 +634,10 @@ class EmulatorViewModel @Inject constructor(
                     RuntimeInputLayoutConfiguration(
                         softInputBehaviour = softInputBehaviour,
                         softInputOpacity = opacity,
-                        isHapticFeedbackEnabled = isHapticFeedbackEnabled,
-                        isSwipeDpadEnabled = isSwipeDpadEnabled,
-                        swipeDpadReleaseLatency = swipeDpadReleaseLatency,
+                        isHapticFeedbackEnabled = inputSettings.isHapticFeedbackEnabled,
+                        isSwipeDpadEnabled = inputSettings.isSwipeDpadEnabled,
+                        swipeDpadReleaseLatency = inputSettings.swipeDpadReleaseLatency,
+                        isFullscreenStretchEnabled = inputSettings.isFullscreenStretchEnabled,
                         layoutOrientation = layoutConfiguration.orientation,
                         layout = layout,
                     )
@@ -1058,3 +1065,10 @@ class EmulatorViewModel @Inject constructor(
         }
     }
 }
+
+private data class RuntimeInputSettings(
+    val isHapticFeedbackEnabled: Boolean,
+    val isSwipeDpadEnabled: Boolean,
+    val swipeDpadReleaseLatency: Int,
+    val isFullscreenStretchEnabled: Boolean,
+)

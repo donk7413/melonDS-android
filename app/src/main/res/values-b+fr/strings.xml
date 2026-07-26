@@ -201,6 +201,8 @@
     <string name="swipe_dpad">Glisser directionnel sur l\'écran non tactile</string>
     <string name="swipe_dpad_summary">Glissez le doigt sur l\'écran non tactile : croix directionnelle flottante. Tap = A, appui long = B</string>
     <string name="input_toggle_fullscreen">Plein écran (masquer l\'écran du bas)</string>
+    <string name="fullscreen_stretch">Étirer en plein écran</string>
+    <string name="fullscreen_stretch_summary">En mode plein écran, étire l\'image sur tout l\'écran au lieu de conserver les proportions</string>
     <string name="pin_rom_to_home_screen">Épingler sur l\'écran d\'accueil</string>
     <string name="pin_shortcut_not_supported">Votre écran d\'accueil ne prend pas en charge les raccourcis épinglés</string>
     <string name="export">Exporter</string>

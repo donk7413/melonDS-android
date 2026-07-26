@@ -480,6 +480,12 @@ class SharedPreferencesSettingsRepository(
         }
     }
 
+    override fun isFullscreenStretchEnabled(): Flow<Boolean> {
+        return getOrCreatePreferenceSharedFlow("input_fullscreen_stretch") {
+            preferences.getBoolean("input_fullscreen_stretch", false)
+        }
+    }
+
     override fun isRetroAchievementsRichPresenceEnabled(): Boolean {
         return preferences.getBoolean("ra_rich_presence", true)
     }
