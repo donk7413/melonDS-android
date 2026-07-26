@@ -16,6 +16,7 @@ abstract class FrontendInputHandler : IInputListener {
             Input.QUICK_LOAD -> onQuickLoad()
             Input.REWIND -> onRewind()
             Input.TOGGLE_FULLSCREEN -> onToggleFullscreen()
+            Input.QUICK_PAUSE -> onQuickPause()
             else -> {}
         }
     }
@@ -36,4 +37,5 @@ abstract class FrontendInputHandler : IInputListener {
     abstract fun onQuickLoad()
     abstract fun onRewind()
     abstract fun onToggleFullscreen()
+    abstract fun onQuickPause()
 }

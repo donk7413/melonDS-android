@@ -1,5 +1,6 @@
 package me.magnum.melonds.ui.emulator
 
+import android.animation.ObjectAnimator
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -9,12 +10,15 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.view.Display
+import android.view.Gravity
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
 import android.view.WindowManager
+import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
@@ -243,6 +247,61 @@ class EmulatorActivity : AppCompatActivity() {
         override fun onToggleFullscreen() {
             binding.viewLayoutControls.toggleFullscreen()
             updateRendererScreenAreas()
+        }
+
+        override fun onQuickPause() {
+            toggleQuickPause()
+        }
+    }
+
+    private var isQuickPaused = false
+    private var quickPauseAnimator: ObjectAnimator? = null
+    private val quickPauseOverlay by lazy {
+        val pauseIcon = ImageView(this).apply {
+            setImageResource(R.drawable.ic_pause_large)
+        }
+        FrameLayout(this).apply {
+            setBackgroundColor(0x99333333.toInt())
+            isClickable = true
+            isFocusable = true
+            val iconSize = (140 * resources.displayMetrics.density).toInt()
+            addView(pauseIcon, FrameLayout.LayoutParams(iconSize, iconSize, Gravity.CENTER))
+            setOnClickListener { dismissQuickPause(resumeEmulator = true) }
+        }
+    }
+
+    private fun toggleQuickPause() {
+        if (isQuickPaused) {
+            dismissQuickPause(resumeEmulator = true)
+        } else if (viewModel.emulatorState.value.isRunning()) {
+            isQuickPaused = true
+            viewModel.pauseEmulator(false)
+            if (quickPauseOverlay.parent == null) {
+                addContentView(quickPauseOverlay, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+            }
+            quickPauseOverlay.isVisible = true
+            val pauseIcon = quickPauseOverlay.getChildAt(0)
+            quickPauseAnimator?.cancel()
+            quickPauseAnimator = ObjectAnimator.ofFloat(pauseIcon, View.ALPHA, 1f, 0.2f).apply {
+                duration = 1200
+                repeatMode = ObjectAnimator.REVERSE
+                repeatCount = ObjectAnimator.INFINITE
+                start()
+            }
+        }
+    }
+
+    private fun dismissQuickPause(resumeEmulator: Boolean) {
+        if (!isQuickPaused) {
+            return
+        }
+
+        isQuickPaused = false
+        quickPauseAnimator?.cancel()
+        quickPauseAnimator = null
+        quickPauseOverlay.isVisible = false
+        if (resumeEmulator) {
+            viewModel.resumeEmulator()
         }
     }
     private val settingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
@@ -1033,6 +1092,7 @@ class EmulatorActivity : AppCompatActivity() {
         super.onPause()
         enableScreenTimeOut()
         choreographerFrameRenderer.stopRendering()
+        dismissQuickPause(resumeEmulator = false)
         viewModel.pauseEmulator(false)
     }
 
