@@ -259,6 +259,11 @@ class EmulatorActivity : AppCompatActivity() {
     private val quickPauseOverlay by lazy {
         val pauseIcon = ImageView(this).apply {
             setImageResource(R.drawable.ic_pause_large)
+            isClickable = true
+            isFocusable = true
+            // Only tapping the central pause symbol resumes the game. The rest of the overlay
+            // swallows touches so that the game controls stay inactive while paused
+            setOnClickListener { dismissQuickPause(resumeEmulator = true) }
         }
         FrameLayout(this).apply {
             setBackgroundColor(0x99333333.toInt())
@@ -266,7 +271,6 @@ class EmulatorActivity : AppCompatActivity() {
             isFocusable = true
             val iconSize = (140 * resources.displayMetrics.density).toInt()
             addView(pauseIcon, FrameLayout.LayoutParams(iconSize, iconSize, Gravity.CENTER))
-            setOnClickListener { dismissQuickPause(resumeEmulator = true) }
         }
     }
 
