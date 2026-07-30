@@ -215,6 +215,7 @@
     <string name="auto_action_press_duration">Appui (ms)</string>
     <string name="auto_action_delay_after">Délai (ms)</string>
     <string name="auto_action_name">Nom</string>
+    <string name="auto_action_input_toggle_fullscreen">Basculer le plein écran</string>
     <string name="auto_action_save">Enregistrer</string>
     <string name="fullscreen_stretch">Étirer en plein écran</string>
     <string name="fullscreen_stretch_summary">En mode plein écran, étire l\'image sur tout l\'écran au lieu de conserver les proportions</string>

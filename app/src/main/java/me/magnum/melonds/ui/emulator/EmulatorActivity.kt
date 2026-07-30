@@ -602,6 +602,9 @@ class EmulatorActivity : AppCompatActivity() {
                             activeOverlays.addActiveOverlay(EmulatorOverlay.AUTO_ACTIONS_DIALOG)
                             showAutoActionsDialog.value = true
                         }
+                        is EmulatorUiEvent.PerformFrontendAction -> {
+                            frontendInputHandler.onKeyPress(it.input)
+                        }
                         EmulatorUiEvent.ShowPendingSubmissionsDialog -> {
                             activeOverlays.addActiveOverlay(EmulatorOverlay.PENDING_SUBMISSION_CONFIRM_EXIT)
                             showPendingSubmissionsDialog.value = true

@@ -55,6 +55,8 @@ import me.magnum.melonds.R
 import me.magnum.melonds.domain.model.Input
 import me.magnum.melonds.domain.model.Rect
 import me.magnum.melonds.domain.model.autoaction.AutoActionStep
+import me.magnum.melonds.ui.common.melonOutlinedTextFieldColors
+import me.magnum.melonds.ui.common.melonTextButtonColors
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -62,6 +64,31 @@ import kotlin.math.roundToInt
 
 private const val SCREENSHOT_WIDTH = 256
 private const val SCREENSHOT_HEIGHT = 384
+
+// Regular DS button presses plus frontend-only actions that can be scripted into a sequence
+private val SELECTABLE_STEP_INPUTS = Input.SYSTEM_BUTTONS + listOf(Input.TOGGLE_FULLSCREEN, Input.SWAP_SCREENS)
+
+@Composable
+private fun stepInputLabel(input: Input): String {
+    val resource = when (input) {
+        Input.A -> R.string.input_a
+        Input.B -> R.string.input_b
+        Input.X -> R.string.input_x
+        Input.Y -> R.string.input_y
+        Input.LEFT -> R.string.input_left
+        Input.RIGHT -> R.string.input_right
+        Input.UP -> R.string.input_up
+        Input.DOWN -> R.string.input_down
+        Input.L -> R.string.input_l
+        Input.R -> R.string.input_r
+        Input.START -> R.string.input_start
+        Input.SELECT -> R.string.input_select
+        Input.TOGGLE_FULLSCREEN -> R.string.auto_action_input_toggle_fullscreen
+        Input.SWAP_SCREENS -> R.string.input_swap_screens
+        else -> return input.name
+    }
+    return stringResource(resource)
+}
 
 @Composable
 fun AutoActionEditorDialog(
@@ -175,7 +202,7 @@ fun AutoActionEditorDialog(
                     )
                 }
 
-                TextButton(onClick = { steps.add(AutoActionStep(Input.A, 100, 200)) }) {
+                TextButton(colors = melonTextButtonColors(), onClick = { steps.add(AutoActionStep(Input.A, 100, 200)) }) {
                     Text(stringResource(R.string.auto_action_add_step).uppercase())
                 }
 
@@ -185,10 +212,11 @@ fun AutoActionEditorDialog(
                     onValueChange = { name = it },
                     label = { Text(stringResource(R.string.auto_action_name)) },
                     singleLine = true,
+                    colors = melonOutlinedTextFieldColors(),
                 )
 
                 Row(Modifier.fillMaxWidth()) {
-                    TextButton(onClick = onCancel) {
+                    TextButton(onClick = onCancel, colors = melonTextButtonColors()) {
                         Text(stringResource(R.string.cancel).uppercase())
                     }
 
@@ -197,6 +225,7 @@ fun AutoActionEditorDialog(
                     val selectedRegion = computeSelectedRegion(selectionStart, selectionEnd, imageSize)
                     TextButton(
                         enabled = name.isNotBlank() && selectedRegion != null && steps.isNotEmpty(),
+                        colors = melonTextButtonColors(),
                         onClick = {
                             selectedRegion?.let {
                                 onSave(name.trim(), it, threshold.roundToInt(), repeatWhileVisible, steps.toList())
@@ -224,21 +253,21 @@ private fun AutoActionStepRow(
     ) {
         Box {
             var isMenuOpen by remember { mutableStateOf(false) }
-            TextButton(onClick = { isMenuOpen = true }) {
-                Text(step.input.name)
+            TextButton(onClick = { isMenuOpen = true }, colors = melonTextButtonColors()) {
+                Text(stepInputLabel(step.input))
             }
             DropdownMenu(
                 expanded = isMenuOpen,
                 onDismissRequest = { isMenuOpen = false },
             ) {
-                Input.SYSTEM_BUTTONS.forEach { input ->
+                SELECTABLE_STEP_INPUTS.forEach { input ->
                     DropdownMenuItem(
                         onClick = {
                             onStepChanged(step.copy(input = input))
                             isMenuOpen = false
                         },
                     ) {
-                        Text(input.name)
+                        Text(stepInputLabel(input))
                     }
                 }
             }
@@ -257,6 +286,7 @@ private fun AutoActionStepRow(
             label = { Text(stringResource(R.string.auto_action_press_duration)) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            colors = melonOutlinedTextFieldColors(),
         )
 
         var delayAfterText by remember { mutableStateOf(step.delayAfterMs.toString()) }
@@ -272,6 +302,7 @@ private fun AutoActionStepRow(
             label = { Text(stringResource(R.string.auto_action_delay_after)) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            colors = melonOutlinedTextFieldColors(),
         )
 
         IconButton(onClick = onDelete) {

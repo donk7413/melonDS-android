@@ -1,5 +1,6 @@
 package me.magnum.melonds.ui.emulator.model
 
+import me.magnum.melonds.domain.model.Input
 import me.magnum.melonds.domain.model.RomInfo
 import me.magnum.melonds.domain.model.SaveStateSlot
 import me.magnum.melonds.ui.emulator.rewind.model.RewindWindow
@@ -19,6 +20,7 @@ sealed class EmulatorUiEvent {
     }
     data object ShowAchievementList : EmulatorUiEvent()
     data object ShowAutoActions : EmulatorUiEvent()
+    data class PerformFrontendAction(val input: Input) : EmulatorUiEvent()
     data object ShowPendingSubmissionsDialog : EmulatorUiEvent()
     data object CloseEmulator : EmulatorUiEvent()
 }

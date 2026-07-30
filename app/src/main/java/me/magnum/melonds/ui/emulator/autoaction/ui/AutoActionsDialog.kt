@@ -31,6 +31,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.runtime.collectAsState
 import kotlinx.coroutines.launch
 import me.magnum.melonds.R
+import me.magnum.melonds.ui.common.melonTextButtonColors
 import me.magnum.melonds.ui.emulator.EmulatorViewModel
 
 @Composable
@@ -105,13 +106,14 @@ fun AutoActionsDialog(
                     }
 
                     Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                        TextButton(onClick = onDismiss) {
+                        TextButton(onClick = onDismiss, colors = melonTextButtonColors()) {
                             Text(stringResource(R.string.cancel).uppercase())
                         }
 
                         androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
 
                         TextButton(
+                            colors = melonTextButtonColors(),
                             onClick = {
                                 coroutineScope.launch {
                                     viewModel.captureScreenshotForAutoAction()?.let {

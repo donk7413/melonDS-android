@@ -491,9 +491,16 @@ class EmulatorViewModel @Inject constructor(
 
     private suspend fun executeAutoActionSteps(steps: List<AutoActionStep>) {
         steps.forEach { step ->
-            MelonEmulator.onInputDown(step.input)
-            delay(step.pressDurationMs)
-            MelonEmulator.onInputUp(step.input)
+            if (step.input.isSystemInput) {
+                MelonEmulator.onInputDown(step.input)
+                delay(step.pressDurationMs)
+                MelonEmulator.onInputUp(step.input)
+            } else {
+                // Frontend-only actions (e.g. toggling fullscreen, swapping screens) have no
+                // native key code and are handled by the activity's frontend input handler instead
+                _uiEvent.emit(EmulatorUiEvent.PerformFrontendAction(step.input))
+                delay(step.pressDurationMs)
+            }
             delay(step.delayAfterMs)
         }
     }
