@@ -88,6 +88,12 @@ object MelonModule {
 
     @Provides
     @Singleton
+    fun provideRomAutoActionsRepository(@ApplicationContext context: Context, gson: Gson): RomAutoActionsRepository {
+        return InternalRomAutoActionsRepository(context, gson)
+    }
+
+    @Provides
+    @Singleton
     fun provideBackgroundsRepository(@ApplicationContext context: Context, gson: Gson): BackgroundRepository {
         return InternalBackgroundsRepository(context, gson)
     }

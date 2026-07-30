@@ -1,5 +1,6 @@
 package me.magnum.melonds.ui.emulator
 
+import android.graphics.Bitmap
 import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -28,6 +29,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -35,15 +37,20 @@ import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import me.magnum.melonds.MelonEmulator
 import me.magnum.melonds.common.romprocessors.RomFileProcessorFactory
 import me.magnum.melonds.common.runtime.ScreenshotFrameBufferProvider
 import me.magnum.melonds.domain.model.Cheat
 import me.magnum.melonds.domain.model.ConsoleType
 import me.magnum.melonds.domain.model.FpsCounterPosition
+import me.magnum.melonds.domain.model.Rect
 import me.magnum.melonds.domain.model.RomInfo
 import me.magnum.melonds.domain.model.RuntimeBackground
 import me.magnum.melonds.domain.model.SaveStateSlot
+import me.magnum.melonds.domain.model.autoaction.AutoActionStep
+import me.magnum.melonds.domain.model.autoaction.RomAutoAction
 import me.magnum.melonds.domain.model.emulator.EmulatorEvent
 import me.magnum.melonds.domain.model.emulator.EmulatorSessionUpdateAction
 import me.magnum.melonds.domain.model.emulator.FirmwareLaunchResult
@@ -62,6 +69,7 @@ import me.magnum.melonds.domain.model.ui.Orientation
 import me.magnum.melonds.domain.repositories.BackgroundRepository
 import me.magnum.melonds.domain.repositories.CheatsRepository
 import me.magnum.melonds.domain.repositories.LayoutsRepository
+import me.magnum.melonds.domain.repositories.RomAutoActionsRepository
 import me.magnum.melonds.domain.repositories.RetroAchievementsRepository
 import me.magnum.melonds.domain.repositories.RomsRepository
 import me.magnum.melonds.domain.repositories.SaveStatesRepository
@@ -90,6 +98,7 @@ import java.util.UUID
 import javax.inject.Inject
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
@@ -106,6 +115,7 @@ class EmulatorViewModel @Inject constructor(
     private val layoutsRepository: LayoutsRepository,
     private val backgroundsRepository: BackgroundRepository,
     private val saveStatesRepository: SaveStatesRepository,
+    private val romAutoActionsRepository: RomAutoActionsRepository,
     private val screenshotFrameBufferProvider: ScreenshotFrameBufferProvider,
     private val uiLayoutProvider: UILayoutProvider,
     private val emulatorManager: EmulatorManager,
@@ -116,6 +126,8 @@ class EmulatorViewModel @Inject constructor(
 
     private val sessionCoroutineScope = EmulatorSessionCoroutineScope()
     private var raSessionJob: Job? = null
+    private var isEmulatorPaused = false
+    private val screenshotMutex = Mutex()
 
     private val _emulatorState = MutableStateFlow<EmulatorState>(EmulatorState.Uninitialized)
     val emulatorState = _emulatorState.asStateFlow()
@@ -265,6 +277,7 @@ class EmulatorViewModel @Inject constructor(
                 _emulatorState.value = EmulatorState.RunningRom(rom)
                 startTrackingFps()
                 startTrackingPlayTime(rom)
+                startAutoActions(rom)
             }
         }
     }
@@ -347,6 +360,7 @@ class EmulatorViewModel @Inject constructor(
     }
 
     fun pauseEmulator(showPauseMenu: Boolean) {
+        isEmulatorPaused = true
         sessionCoroutineScope.launch {
             emulatorManager.pauseEmulator()
             if (showPauseMenu) {
@@ -370,9 +384,140 @@ class EmulatorViewModel @Inject constructor(
     }
 
     fun resumeEmulator() {
+        isEmulatorPaused = false
         sessionCoroutineScope.launch {
             emulatorManager.resumeEmulator()
         }
+    }
+
+    fun getCurrentRomAutoActions(): Flow<List<RomAutoAction>> {
+        val rom = (_emulatorState.value as? EmulatorState.RunningRom)?.rom ?: return flowOf(emptyList())
+        return romAutoActionsRepository.getRomAutoActions(rom.uri)
+    }
+
+    fun setAutoActionEnabled(action: RomAutoAction, enabled: Boolean) {
+        sessionCoroutineScope.launch {
+            romAutoActionsRepository.saveAutoAction(action.copy(enabled = enabled), null)
+        }
+    }
+
+    fun deleteAutoAction(action: RomAutoAction) {
+        sessionCoroutineScope.launch {
+            romAutoActionsRepository.deleteAutoAction(action)
+        }
+    }
+
+    fun createAutoAction(name: String, region: Rect, similarityThreshold: Int, repeatWhileVisible: Boolean, steps: List<AutoActionStep>, screenshot: Bitmap) {
+        val rom = (_emulatorState.value as? EmulatorState.RunningRom)?.rom ?: return
+        sessionCoroutineScope.launch {
+            val referenceImage = Bitmap.createBitmap(screenshot, region.x, region.y, region.width, region.height)
+            val action = RomAutoAction(
+                id = UUID.randomUUID(),
+                romUri = rom.uri,
+                name = name,
+                enabled = true,
+                region = region,
+                similarityThreshold = similarityThreshold,
+                repeatWhileVisible = repeatWhileVisible,
+                steps = steps,
+            )
+            romAutoActionsRepository.saveAutoAction(action, referenceImage)
+        }
+    }
+
+    /**
+     * Captures a screenshot of the current frame while the emulator is paused (e.g. behind the
+     * auto-action editor). The emulator is resumed for a single capture and paused again.
+     */
+    suspend fun captureScreenshotForAutoAction(): Bitmap? {
+        if (_emulatorState.value !is EmulatorState.RunningRom) {
+            return null
+        }
+
+        return screenshotMutex.withLock {
+            emulatorManager.resumeEmulator()
+            val screenshotCaptured = emulatorManager.takeScreenshot()
+            emulatorManager.pauseEmulator()
+            if (screenshotCaptured) {
+                screenshotFrameBufferProvider.getScreenshot()
+            } else {
+                null
+            }
+        }
+    }
+
+    private fun startAutoActions(rom: Rom) {
+        sessionCoroutineScope.launch(Dispatchers.Default) {
+            romAutoActionsRepository.getRomAutoActions(rom.uri).collectLatest { actions ->
+                val runtimeActions = actions.filter { it.enabled && it.steps.isNotEmpty() }.mapNotNull { action ->
+                    romAutoActionsRepository.loadReferenceImagePixels(action)?.let { AutoActionRuntimeState(action, it) }
+                }
+                if (runtimeActions.isEmpty()) {
+                    return@collectLatest
+                }
+
+                while (isActive) {
+                    delay(AUTO_ACTION_POLL_INTERVAL_MS)
+                    if (_emulatorState.value !is EmulatorState.RunningRom || isEmulatorPaused) {
+                        continue
+                    }
+
+                    val screenshotCaptured = screenshotMutex.withLock {
+                        emulatorManager.takeScreenshot()
+                    }
+                    if (!screenshotCaptured) {
+                        continue
+                    }
+
+                    runtimeActions.forEach { runtimeAction ->
+                        val currentPixels = screenshotFrameBufferProvider.copyRegion(runtimeAction.action.region)
+                        val similarity = computeSimilarity(runtimeAction.referencePixels, currentPixels)
+                        val isMatching = similarity >= runtimeAction.action.similarityThreshold
+                        val shouldTrigger = if (runtimeAction.action.repeatWhileVisible) {
+                            isMatching
+                        } else {
+                            isMatching && !runtimeAction.wasMatching
+                        }
+                        runtimeAction.wasMatching = isMatching
+
+                        if (shouldTrigger && !isEmulatorPaused) {
+                            executeAutoActionSteps(runtimeAction.action.steps)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun executeAutoActionSteps(steps: List<AutoActionStep>) {
+        steps.forEach { step ->
+            MelonEmulator.onInputDown(step.input)
+            delay(step.pressDurationMs)
+            MelonEmulator.onInputUp(step.input)
+            delay(step.delayAfterMs)
+        }
+    }
+
+    private fun computeSimilarity(referencePixels: IntArray, currentPixels: IntArray): Int {
+        if (referencePixels.isEmpty() || referencePixels.size != currentPixels.size) {
+            return 0
+        }
+
+        var totalDifference = 0L
+        for (i in referencePixels.indices) {
+            val reference = referencePixels[i]
+            val current = currentPixels[i]
+            totalDifference += abs(((reference shr 16) and 0xFF) - ((current shr 16) and 0xFF))
+            totalDifference += abs(((reference shr 8) and 0xFF) - ((current shr 8) and 0xFF))
+            totalDifference += abs((reference and 0xFF) - (current and 0xFF))
+        }
+
+        val maxDifference = referencePixels.size.toLong() * 3L * 255L
+        return (100L - (totalDifference * 100L / maxDifference)).toInt()
+    }
+
+    private class AutoActionRuntimeState(val action: RomAutoAction, val referencePixels: IntArray) {
+        var wasMatching = false
     }
 
     fun resetEmulator() {
@@ -449,6 +594,7 @@ class EmulatorViewModel @Inject constructor(
                         }
                     }
                     RomPauseMenuOption.VIEW_ACHIEVEMENTS -> _uiEvent.tryEmit(EmulatorUiEvent.ShowAchievementList)
+                    RomPauseMenuOption.AUTO_ACTIONS -> _uiEvent.tryEmit(EmulatorUiEvent.ShowAutoActions)
                     RomPauseMenuOption.RESET -> resetEmulator()
                     RomPauseMenuOption.EXIT -> exitEmulator(force = false)
                 }
@@ -1065,6 +1211,8 @@ class EmulatorViewModel @Inject constructor(
         }
     }
 }
+
+private const val AUTO_ACTION_POLL_INTERVAL_MS = 400L
 
 private data class RuntimeInputSettings(
     val isHapticFeedbackEnabled: Boolean,

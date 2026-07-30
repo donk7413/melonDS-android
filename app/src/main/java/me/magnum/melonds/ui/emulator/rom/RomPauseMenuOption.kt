@@ -10,6 +10,7 @@ enum class RomPauseMenuOption(override val textResource: Int) : PauseMenuOption 
     REWIND(R.string.rewind),
     CHEATS(R.string.cheats),
     VIEW_ACHIEVEMENTS(R.string.achievements),
+    AUTO_ACTIONS(R.string.auto_actions),
     RESET(R.string.reset),
     EXIT(R.string.exit)
 }

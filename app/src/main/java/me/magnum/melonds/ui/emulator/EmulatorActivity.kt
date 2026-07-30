@@ -101,6 +101,7 @@ import me.magnum.melonds.ui.emulator.rewind.EdgeSpacingDecorator
 import me.magnum.melonds.ui.emulator.rewind.RewindSaveStateAdapter
 import me.magnum.melonds.ui.emulator.rewind.model.RewindWindow
 import me.magnum.melonds.ui.emulator.rom.SaveStateAdapter
+import me.magnum.melonds.ui.emulator.autoaction.ui.AutoActionsDialog
 import me.magnum.melonds.ui.emulator.ui.AchievementListDialog
 import me.magnum.melonds.ui.emulator.ui.AchievementUpdatesUi
 import me.magnum.melonds.ui.emulator.ui.PendingSubmissionsDialog
@@ -337,6 +338,7 @@ class EmulatorActivity : AppCompatActivity() {
     }
     private val showAchievementList = mutableStateOf(false)
     private val showPendingSubmissionsDialog = mutableStateOf(false)
+    private val showAutoActionsDialog = mutableStateOf(false)
 
     private val activeOverlays = EmulatorOverlayTracker(
         onOverlaysCleared = {
@@ -458,6 +460,17 @@ class EmulatorActivity : AppCompatActivity() {
                             activeOverlays.removeActiveOverlay(EmulatorOverlay.PENDING_SUBMISSION_CONFIRM_EXIT)
                             viewModel.resumeEmulator()
                             showPendingSubmissionsDialog.value = false
+                        }
+                    )
+                }
+
+                if (showAutoActionsDialog.value) {
+                    AutoActionsDialog(
+                        viewModel = viewModel,
+                        onDismiss = {
+                            activeOverlays.removeActiveOverlay(EmulatorOverlay.AUTO_ACTIONS_DIALOG)
+                            viewModel.resumeEmulator()
+                            showAutoActionsDialog.value = false
                         }
                     )
                 }
@@ -584,6 +597,10 @@ class EmulatorActivity : AppCompatActivity() {
                         EmulatorUiEvent.ShowAchievementList -> {
                             activeOverlays.addActiveOverlay(EmulatorOverlay.ACHIEVEMENTS_DIALOG)
                             showAchievementList.value = true
+                        }
+                        EmulatorUiEvent.ShowAutoActions -> {
+                            activeOverlays.addActiveOverlay(EmulatorOverlay.AUTO_ACTIONS_DIALOG)
+                            showAutoActionsDialog.value = true
                         }
                         EmulatorUiEvent.ShowPendingSubmissionsDialog -> {
                             activeOverlays.addActiveOverlay(EmulatorOverlay.PENDING_SUBMISSION_CONFIRM_EXIT)

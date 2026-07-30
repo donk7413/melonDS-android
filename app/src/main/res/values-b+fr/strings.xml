@@ -202,6 +202,20 @@
     <string name="swipe_dpad_summary">Glissez le doigt sur l\'écran non tactile : croix directionnelle flottante. Tap = A, appui long = B</string>
     <string name="input_toggle_fullscreen">Plein écran (masquer l\'écran du bas)</string>
     <string name="input_quick_pause">Pause simple</string>
+    <string name="auto_actions">Actions automatiques</string>
+    <string name="auto_actions_empty">Aucune action automatique. Créez-en une pour déclencher une séquence de boutons quand une partie de l\'écran correspond à une image de référence.</string>
+    <string name="auto_action_new">Nouvelle action</string>
+    <string name="auto_action_select_zone">Glissez sur la capture pour sélectionner la zone de déclenchement</string>
+    <string name="auto_action_threshold">Seuil de ressemblance : %1$d %%</string>
+    <string name="auto_action_repeat">Répéter tant que visible</string>
+    <string name="auto_action_mode_once">une fois par apparition</string>
+    <string name="auto_action_mode_repeat">répète tant que visible</string>
+    <string name="auto_action_sequence">Séquence de boutons</string>
+    <string name="auto_action_add_step">Ajouter une étape</string>
+    <string name="auto_action_press_duration">Appui (ms)</string>
+    <string name="auto_action_delay_after">Délai (ms)</string>
+    <string name="auto_action_name">Nom</string>
+    <string name="auto_action_save">Enregistrer</string>
     <string name="fullscreen_stretch">Étirer en plein écran</string>
     <string name="fullscreen_stretch_summary">En mode plein écran, étire l\'image sur tout l\'écran au lieu de conserver les proportions</string>
     <string name="pin_rom_to_home_screen">Épingler sur l\'écran d\'accueil</string>
