@@ -274,6 +274,12 @@
     <string name="auto_action_delay_after">Delay (ms)</string>
     <string name="auto_action_name">Name</string>
     <string name="auto_action_input_toggle_fullscreen">Toggle fullscreen</string>
+    <string name="auto_action_triggers">Trigger conditions</string>
+    <string name="auto_action_add_trigger">Add trigger condition</string>
+    <string name="auto_action_no_other_actions">Create another action first to use it as a trigger condition</string>
+    <string name="auto_action_trigger_select_action">Select action</string>
+    <string name="auto_action_trigger_was">was</string>
+    <string name="auto_action_trigger_was_not">was not</string>
     <string name="auto_action_save">Save</string>
     <string name="fullscreen_stretch">Stretch in fullscreen</string>
     <string name="fullscreen_stretch_summary">In fullscreen mode, stretch the screen to fill the whole display instead of keeping its aspect ratio</string>

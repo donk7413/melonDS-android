@@ -55,8 +55,12 @@ import me.magnum.melonds.R
 import me.magnum.melonds.domain.model.Input
 import me.magnum.melonds.domain.model.Rect
 import me.magnum.melonds.domain.model.autoaction.AutoActionStep
+import me.magnum.melonds.domain.model.autoaction.AutoActionTrigger
+import me.magnum.melonds.domain.model.autoaction.AutoActionTriggerMode
+import me.magnum.melonds.domain.model.autoaction.RomAutoAction
 import me.magnum.melonds.ui.common.melonOutlinedTextFieldColors
 import me.magnum.melonds.ui.common.melonTextButtonColors
+import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -90,10 +94,16 @@ private fun stepInputLabel(input: Input): String {
     return stringResource(resource)
 }
 
+private data class TriggerDraft(
+    val referencedActionId: UUID?,
+    val mode: AutoActionTriggerMode,
+)
+
 @Composable
 fun AutoActionEditorDialog(
     screenshot: Bitmap,
-    onSave: (name: String, region: Rect, similarityThreshold: Int, repeatWhileVisible: Boolean, steps: List<AutoActionStep>) -> Unit,
+    existingActions: List<RomAutoAction>,
+    onSave: (name: String, region: Rect, similarityThreshold: Int, repeatWhileVisible: Boolean, steps: List<AutoActionStep>, triggers: List<AutoActionTrigger>) -> Unit,
     onCancel: () -> Unit,
 ) {
     var name by remember { mutableStateOf("") }
@@ -103,6 +113,7 @@ fun AutoActionEditorDialog(
     var selectionEnd by remember { mutableStateOf<Offset?>(null) }
     var imageSize by remember { mutableStateOf(IntSize.Zero) }
     val steps = remember { mutableStateListOf<AutoActionStep>() }
+    val triggers = remember { mutableStateListOf<TriggerDraft>() }
 
     Dialog(
         onDismissRequest = onCancel,
@@ -190,6 +201,34 @@ fun AutoActionEditorDialog(
                 }
 
                 Text(
+                    text = stringResource(R.string.auto_action_triggers),
+                    style = MaterialTheme.typography.subtitle1,
+                )
+
+                if (existingActions.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.auto_action_no_other_actions),
+                        style = MaterialTheme.typography.body2,
+                    )
+                } else {
+                    triggers.forEachIndexed { index, trigger ->
+                        TriggerConditionRow(
+                            trigger = trigger,
+                            existingActions = existingActions,
+                            onTriggerChanged = { triggers[index] = it },
+                            onDelete = { triggers.removeAt(index) },
+                        )
+                    }
+
+                    TextButton(
+                        colors = melonTextButtonColors(),
+                        onClick = { triggers.add(TriggerDraft(existingActions.first().id, AutoActionTriggerMode.WAS_LAST_ACTION)) },
+                    ) {
+                        Text(stringResource(R.string.auto_action_add_trigger).uppercase())
+                    }
+                }
+
+                Text(
                     text = stringResource(R.string.auto_action_sequence),
                     style = MaterialTheme.typography.subtitle1,
                 )
@@ -228,7 +267,10 @@ fun AutoActionEditorDialog(
                         colors = melonTextButtonColors(),
                         onClick = {
                             selectedRegion?.let {
-                                onSave(name.trim(), it, threshold.roundToInt(), repeatWhileVisible, steps.toList())
+                                val resolvedTriggers = triggers.mapNotNull { draft ->
+                                    draft.referencedActionId?.let { id -> AutoActionTrigger(id, draft.mode) }
+                                }
+                                onSave(name.trim(), it, threshold.roundToInt(), repeatWhileVisible, steps.toList(), resolvedTriggers)
                             }
                         },
                     ) {
@@ -304,6 +346,86 @@ private fun AutoActionStepRow(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             colors = melonOutlinedTextFieldColors(),
         )
+
+        IconButton(onClick = onDelete) {
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = stringResource(R.string.delete),
+            )
+        }
+    }
+}
+
+@Composable
+private fun TriggerConditionRow(
+    trigger: TriggerDraft,
+    existingActions: List<RomAutoAction>,
+    onTriggerChanged: (TriggerDraft) -> Unit,
+    onDelete: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box {
+            var isMenuOpen by remember { mutableStateOf(false) }
+            val selectedName = existingActions.firstOrNull { it.id == trigger.referencedActionId }?.name
+                ?: stringResource(R.string.auto_action_trigger_select_action)
+            TextButton(onClick = { isMenuOpen = true }, colors = melonTextButtonColors()) {
+                Text(selectedName)
+            }
+            DropdownMenu(
+                expanded = isMenuOpen,
+                onDismissRequest = { isMenuOpen = false },
+            ) {
+                existingActions.forEach { action ->
+                    DropdownMenuItem(
+                        onClick = {
+                            onTriggerChanged(trigger.copy(referencedActionId = action.id))
+                            isMenuOpen = false
+                        },
+                    ) {
+                        Text(action.name)
+                    }
+                }
+            }
+        }
+
+        Box {
+            var isMenuOpen by remember { mutableStateOf(false) }
+            val modeLabel = if (trigger.mode == AutoActionTriggerMode.WAS_LAST_ACTION) {
+                stringResource(R.string.auto_action_trigger_was)
+            } else {
+                stringResource(R.string.auto_action_trigger_was_not)
+            }
+            TextButton(onClick = { isMenuOpen = true }, colors = melonTextButtonColors()) {
+                Text(modeLabel)
+            }
+            DropdownMenu(
+                expanded = isMenuOpen,
+                onDismissRequest = { isMenuOpen = false },
+            ) {
+                DropdownMenuItem(
+                    onClick = {
+                        onTriggerChanged(trigger.copy(mode = AutoActionTriggerMode.WAS_LAST_ACTION))
+                        isMenuOpen = false
+                    },
+                ) {
+                    Text(stringResource(R.string.auto_action_trigger_was))
+                }
+                DropdownMenuItem(
+                    onClick = {
+                        onTriggerChanged(trigger.copy(mode = AutoActionTriggerMode.WAS_NOT_LAST_ACTION))
+                        isMenuOpen = false
+                    },
+                ) {
+                    Text(stringResource(R.string.auto_action_trigger_was_not))
+                }
+            }
+        }
+
+        Spacer(Modifier.weight(1f))
 
         IconButton(onClick = onDelete) {
             Icon(

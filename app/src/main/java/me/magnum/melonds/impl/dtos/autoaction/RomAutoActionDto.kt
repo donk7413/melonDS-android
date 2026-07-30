@@ -4,6 +4,7 @@ import androidx.core.net.toUri
 import com.google.gson.annotations.SerializedName
 import me.magnum.melonds.domain.model.Rect
 import me.magnum.melonds.domain.model.autoaction.AutoActionStep
+import me.magnum.melonds.domain.model.autoaction.AutoActionTrigger
 import me.magnum.melonds.domain.model.autoaction.RomAutoAction
 import me.magnum.melonds.utils.enumValueOfIgnoreCase
 import java.util.UUID
@@ -31,6 +32,8 @@ data class RomAutoActionDto(
     val repeatWhileVisible: Boolean,
     @SerializedName("steps")
     val steps: List<AutoActionStepDto>,
+    @SerializedName("triggers")
+    val triggers: List<AutoActionTriggerDto>?,
 ) {
 
     companion object {
@@ -47,6 +50,7 @@ data class RomAutoActionDto(
                 action.similarityThreshold,
                 action.repeatWhileVisible,
                 action.steps.map { AutoActionStepDto(it.input.name, it.pressDurationMs, it.delayAfterMs) },
+                action.triggers.map { AutoActionTriggerDto(it.referencedActionId.toString(), it.mode.name) },
             )
         }
     }
@@ -61,6 +65,7 @@ data class RomAutoActionDto(
             similarityThreshold,
             repeatWhileVisible,
             steps.map { AutoActionStep(enumValueOfIgnoreCase(it.input), it.pressDurationMs, it.delayAfterMs) },
+            triggers?.map { AutoActionTrigger(UUID.fromString(it.referencedActionId), enumValueOfIgnoreCase(it.mode)) } ?: emptyList(),
         )
     }
 
@@ -71,5 +76,12 @@ data class RomAutoActionDto(
         val pressDurationMs: Long,
         @SerializedName("delayAfterMs")
         val delayAfterMs: Long,
+    )
+
+    data class AutoActionTriggerDto(
+        @SerializedName("referencedActionId")
+        val referencedActionId: String,
+        @SerializedName("mode")
+        val mode: String,
     )
 }

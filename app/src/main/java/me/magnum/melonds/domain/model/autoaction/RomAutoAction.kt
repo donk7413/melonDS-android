@@ -19,6 +19,7 @@ data class RomAutoAction(
     val similarityThreshold: Int,
     val repeatWhileVisible: Boolean,
     val steps: List<AutoActionStep>,
+    val triggers: List<AutoActionTrigger> = emptyList(),
 )
 
 data class AutoActionStep(
@@ -26,3 +27,18 @@ data class AutoActionStep(
     val pressDurationMs: Long,
     val delayAfterMs: Long,
 )
+
+/**
+ * An extra condition that must hold, in addition to the image match, for the action to fire: the
+ * last auto action that actually triggered must (or must not) be the one identified by
+ * [referencedActionId].
+ */
+data class AutoActionTrigger(
+    val referencedActionId: UUID,
+    val mode: AutoActionTriggerMode,
+)
+
+enum class AutoActionTriggerMode {
+    WAS_LAST_ACTION,
+    WAS_NOT_LAST_ACTION,
+}

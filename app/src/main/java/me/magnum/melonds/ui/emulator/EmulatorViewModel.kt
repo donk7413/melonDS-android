@@ -50,6 +50,8 @@ import me.magnum.melonds.domain.model.RomInfo
 import me.magnum.melonds.domain.model.RuntimeBackground
 import me.magnum.melonds.domain.model.SaveStateSlot
 import me.magnum.melonds.domain.model.autoaction.AutoActionStep
+import me.magnum.melonds.domain.model.autoaction.AutoActionTrigger
+import me.magnum.melonds.domain.model.autoaction.AutoActionTriggerMode
 import me.magnum.melonds.domain.model.autoaction.RomAutoAction
 import me.magnum.melonds.domain.model.emulator.EmulatorEvent
 import me.magnum.melonds.domain.model.emulator.EmulatorSessionUpdateAction
@@ -407,7 +409,15 @@ class EmulatorViewModel @Inject constructor(
         }
     }
 
-    fun createAutoAction(name: String, region: Rect, similarityThreshold: Int, repeatWhileVisible: Boolean, steps: List<AutoActionStep>, screenshot: Bitmap) {
+    fun createAutoAction(
+        name: String,
+        region: Rect,
+        similarityThreshold: Int,
+        repeatWhileVisible: Boolean,
+        steps: List<AutoActionStep>,
+        triggers: List<AutoActionTrigger>,
+        screenshot: Bitmap,
+    ) {
         val rom = (_emulatorState.value as? EmulatorState.RunningRom)?.rom ?: return
         sessionCoroutineScope.launch {
             val referenceImage = Bitmap.createBitmap(screenshot, region.x, region.y, region.width, region.height)
@@ -420,6 +430,7 @@ class EmulatorViewModel @Inject constructor(
                 similarityThreshold = similarityThreshold,
                 repeatWhileVisible = repeatWhileVisible,
                 steps = steps,
+                triggers = triggers,
             )
             romAutoActionsRepository.saveAutoAction(action, referenceImage)
         }
@@ -448,6 +459,7 @@ class EmulatorViewModel @Inject constructor(
 
     private fun startAutoActions(rom: Rom) {
         sessionCoroutineScope.launch(Dispatchers.Default) {
+            var lastTriggeredActionId: UUID? = null
             romAutoActionsRepository.getRomAutoActions(rom.uri).collectLatest { actions ->
                 val runtimeActions = actions.filter { it.enabled && it.steps.isNotEmpty() }.mapNotNull { action ->
                     romAutoActionsRepository.loadReferenceImagePixels(action)?.let { AutoActionRuntimeState(action, it) }
@@ -480,7 +492,15 @@ class EmulatorViewModel @Inject constructor(
                         }
                         runtimeAction.wasMatching = isMatching
 
-                        if (shouldTrigger && !isEmulatorPaused) {
+                        val triggersSatisfied = runtimeAction.action.triggers.all { trigger ->
+                            when (trigger.mode) {
+                                AutoActionTriggerMode.WAS_LAST_ACTION -> lastTriggeredActionId == trigger.referencedActionId
+                                AutoActionTriggerMode.WAS_NOT_LAST_ACTION -> lastTriggeredActionId != trigger.referencedActionId
+                            }
+                        }
+
+                        if (shouldTrigger && triggersSatisfied && !isEmulatorPaused) {
+                            lastTriggeredActionId = runtimeAction.action.id
                             executeAutoActionSteps(runtimeAction.action.steps)
                         }
                     }

@@ -131,8 +131,9 @@ fun AutoActionsDialog(
     } else {
         AutoActionEditorDialog(
             screenshot = screenshot,
-            onSave = { name, region, threshold, repeatWhileVisible, steps ->
-                viewModel.createAutoAction(name, region, threshold, repeatWhileVisible, steps, screenshot)
+            existingActions = actions,
+            onSave = { name, region, threshold, repeatWhileVisible, steps, triggers ->
+                viewModel.createAutoAction(name, region, threshold, repeatWhileVisible, steps, triggers, screenshot)
                 editorScreenshot = null
             },
             onCancel = {
