@@ -112,8 +112,13 @@ fun AutoActionEditorDialog(
     var selectionStart by remember { mutableStateOf<Offset?>(null) }
     var selectionEnd by remember { mutableStateOf<Offset?>(null) }
     var imageSize by remember { mutableStateOf(IntSize.Zero) }
+    var validationError by remember { mutableStateOf<String?>(null) }
     val steps = remember { mutableStateListOf<AutoActionStep>() }
     val triggers = remember { mutableStateListOf<TriggerDraft>() }
+
+    val missingNameMessage = stringResource(R.string.auto_action_error_missing_name)
+    val missingZoneMessage = stringResource(R.string.auto_action_error_missing_zone)
+    val missingStepMessage = stringResource(R.string.auto_action_error_missing_step)
 
     Dialog(
         onDismissRequest = onCancel,
@@ -124,10 +129,7 @@ fun AutoActionEditorDialog(
             shape = MaterialTheme.shapes.medium,
             color = MaterialTheme.colors.surface,
         ) {
-            Column(
-                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
+            Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
                 Text(
                     text = stringResource(R.string.auto_action_new),
                     style = MaterialTheme.typography.h6,
@@ -175,102 +177,122 @@ fun AutoActionEditorDialog(
                     }
                 }
 
-                Text(
-                    text = stringResource(R.string.auto_action_threshold, threshold.roundToInt()),
-                    style = MaterialTheme.typography.body1,
-                )
-                Slider(
-                    value = threshold,
-                    onValueChange = { threshold = it },
-                    valueRange = 50f..100f,
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
+                Column(
+                    modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
-                        modifier = Modifier.weight(1f),
-                        text = stringResource(R.string.auto_action_repeat),
+                        text = stringResource(R.string.auto_action_threshold, threshold.roundToInt()),
                         style = MaterialTheme.typography.body1,
                     )
-                    Switch(
-                        checked = repeatWhileVisible,
-                        onCheckedChange = { repeatWhileVisible = it },
+                    Slider(
+                        value = threshold,
+                        onValueChange = { threshold = it },
+                        valueRange = 50f..100f,
                     )
-                }
 
-                Text(
-                    text = stringResource(R.string.auto_action_triggers),
-                    style = MaterialTheme.typography.subtitle1,
-                )
-
-                if (existingActions.isEmpty()) {
-                    Text(
-                        text = stringResource(R.string.auto_action_no_other_actions),
-                        style = MaterialTheme.typography.body2,
-                    )
-                } else {
-                    triggers.forEachIndexed { index, trigger ->
-                        TriggerConditionRow(
-                            trigger = trigger,
-                            existingActions = existingActions,
-                            onTriggerChanged = { triggers[index] = it },
-                            onDelete = { triggers.removeAt(index) },
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            modifier = Modifier.weight(1f),
+                            text = stringResource(R.string.auto_action_repeat),
+                            style = MaterialTheme.typography.body1,
+                        )
+                        Switch(
+                            checked = repeatWhileVisible,
+                            onCheckedChange = { repeatWhileVisible = it },
                         )
                     }
 
-                    TextButton(
-                        colors = melonTextButtonColors(),
-                        onClick = { triggers.add(TriggerDraft(existingActions.first().id, AutoActionTriggerMode.WAS_LAST_ACTION)) },
-                    ) {
-                        Text(stringResource(R.string.auto_action_add_trigger).uppercase())
+                    Text(
+                        text = stringResource(R.string.auto_action_triggers),
+                        style = MaterialTheme.typography.subtitle1,
+                    )
+
+                    if (existingActions.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.auto_action_no_other_actions),
+                            style = MaterialTheme.typography.body2,
+                        )
+                    } else {
+                        triggers.forEachIndexed { index, trigger ->
+                            TriggerConditionRow(
+                                trigger = trigger,
+                                existingActions = existingActions,
+                                onTriggerChanged = { triggers[index] = it },
+                                onDelete = { triggers.removeAt(index) },
+                            )
+                        }
+
+                        TextButton(
+                            colors = melonTextButtonColors(),
+                            onClick = { triggers.add(TriggerDraft(existingActions.first().id, AutoActionTriggerMode.WAS_LAST_ACTION)) },
+                        ) {
+                            Text(stringResource(R.string.auto_action_add_trigger).uppercase())
+                        }
                     }
-                }
 
-                Text(
-                    text = stringResource(R.string.auto_action_sequence),
-                    style = MaterialTheme.typography.subtitle1,
-                )
+                    Text(
+                        text = stringResource(R.string.auto_action_sequence),
+                        style = MaterialTheme.typography.subtitle1,
+                    )
 
-                steps.forEachIndexed { index, step ->
-                    AutoActionStepRow(
-                        step = step,
-                        onStepChanged = { steps[index] = it },
-                        onDelete = { steps.removeAt(index) },
+                    steps.forEachIndexed { index, step ->
+                        AutoActionStepRow(
+                            step = step,
+                            onStepChanged = { steps[index] = it },
+                            onDelete = { steps.removeAt(index) },
+                        )
+                    }
+
+                    TextButton(colors = melonTextButtonColors(), onClick = { steps.add(AutoActionStep(Input.A, 100, 200)) }) {
+                        Text(stringResource(R.string.auto_action_add_step).uppercase())
+                    }
+
+                    OutlinedTextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text(stringResource(R.string.auto_action_name)) },
+                        singleLine = true,
+                        colors = melonOutlinedTextFieldColors(),
                     )
                 }
 
-                TextButton(colors = melonTextButtonColors(), onClick = { steps.add(AutoActionStep(Input.A, 100, 200)) }) {
-                    Text(stringResource(R.string.auto_action_add_step).uppercase())
+                validationError?.let {
+                    Text(
+                        modifier = Modifier.padding(top = 8.dp),
+                        text = it,
+                        color = MaterialTheme.colors.error,
+                        style = MaterialTheme.typography.body2,
+                    )
                 }
 
-                OutlinedTextField(
-                    modifier = Modifier.fillMaxWidth(),
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.auto_action_name)) },
-                    singleLine = true,
-                    colors = melonOutlinedTextFieldColors(),
-                )
-
-                Row(Modifier.fillMaxWidth()) {
+                Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
                     TextButton(onClick = onCancel, colors = melonTextButtonColors()) {
                         Text(stringResource(R.string.cancel).uppercase())
                     }
 
                     Spacer(Modifier.weight(1f))
 
-                    val selectedRegion = computeSelectedRegion(selectionStart, selectionEnd, imageSize)
                     TextButton(
-                        enabled = name.isNotBlank() && selectedRegion != null && steps.isNotEmpty(),
                         colors = melonTextButtonColors(),
                         onClick = {
-                            selectedRegion?.let {
+                            val selectedRegion = computeSelectedRegion(selectionStart, selectionEnd, imageSize)
+                            validationError = when {
+                                name.isBlank() -> missingNameMessage
+                                selectedRegion == null -> missingZoneMessage
+                                steps.isEmpty() -> missingStepMessage
+                                else -> null
+                            }
+
+                            if (validationError == null && selectedRegion != null) {
                                 val resolvedTriggers = triggers.mapNotNull { draft ->
                                     draft.referencedActionId?.let { id -> AutoActionTrigger(id, draft.mode) }
                                 }
-                                onSave(name.trim(), it, threshold.roundToInt(), repeatWhileVisible, steps.toList(), resolvedTriggers)
+                                onSave(name.trim(), selectedRegion, threshold.roundToInt(), repeatWhileVisible, steps.toList(), resolvedTriggers)
                             }
                         },
                     ) {

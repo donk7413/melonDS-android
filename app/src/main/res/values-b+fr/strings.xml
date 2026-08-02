@@ -222,6 +222,9 @@
     <string name="auto_action_trigger_select_action">Choisir une action</string>
     <string name="auto_action_trigger_was">était</string>
     <string name="auto_action_trigger_was_not">n\'était pas</string>
+    <string name="auto_action_error_missing_name">Entrez un nom</string>
+    <string name="auto_action_error_missing_zone">Sélectionnez une zone en glissant sur la capture</string>
+    <string name="auto_action_error_missing_step">Ajoutez au moins une étape</string>
     <string name="auto_action_save">Enregistrer</string>
     <string name="fullscreen_stretch">Étirer en plein écran</string>
     <string name="fullscreen_stretch_summary">En mode plein écran, étire l\'image sur tout l\'écran au lieu de conserver les proportions</string>

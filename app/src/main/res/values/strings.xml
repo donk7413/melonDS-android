@@ -280,6 +280,9 @@
     <string name="auto_action_trigger_select_action">Select action</string>
     <string name="auto_action_trigger_was">was</string>
     <string name="auto_action_trigger_was_not">was not</string>
+    <string name="auto_action_error_missing_name">Enter a name</string>
+    <string name="auto_action_error_missing_zone">Select a zone by dragging on the screenshot</string>
+    <string name="auto_action_error_missing_step">Add at least one step</string>
     <string name="auto_action_save">Save</string>
     <string name="fullscreen_stretch">Stretch in fullscreen</string>
     <string name="fullscreen_stretch_summary">In fullscreen mode, stretch the screen to fill the whole display instead of keeping its aspect ratio</string>
