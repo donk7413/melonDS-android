@@ -40,6 +40,7 @@ fun RomDetailsScreen(
     retroAchievementsUiState: RomRetroAchievementsUiState,
     onNavigateBack: () -> Unit,
     onLaunchRom: (Rom) -> Unit,
+    onPinRomToHomeScreen: (Rom) -> Unit,
     onRomConfigUpdate: (RomConfigUpdateEvent) -> Unit,
     onRetroAchievementsLogin: (username: String, password: String) -> Unit,
     onRetroAchievementsRetryLoad: () -> Unit,
@@ -90,6 +91,7 @@ fun RomDetailsScreen(
                 pagerState = pagerState,
                 initialFocusRequester = focusRequester,
                 onLaunchRom = { onLaunchRom(rom) },
+                onPinRomToHomeScreen = { onPinRomToHomeScreen(rom) },
                 onNavigateBack = onNavigateBack,
                 onTabClicked = navigateToTab,
             )
@@ -155,6 +157,7 @@ private fun PreviewRomScreen() {
             retroAchievementsUiState = RomRetroAchievementsUiState.LoggedOut(null),
             onNavigateBack = { },
             onLaunchRom = { },
+            onPinRomToHomeScreen = { },
             onRomConfigUpdate = { },
             onRetroAchievementsLogin = { _, _ -> },
             onRetroAchievementsRetryLoad = { },

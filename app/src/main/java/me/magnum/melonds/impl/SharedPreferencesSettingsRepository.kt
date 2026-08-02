@@ -468,6 +468,24 @@ class SharedPreferencesSettingsRepository(
         }
     }
 
+    override fun isSwipeDpadEnabled(): Flow<Boolean> {
+        return getOrCreatePreferenceSharedFlow("input_swipe_dpad_enabled") {
+            preferences.getBoolean("input_swipe_dpad_enabled", false)
+        }
+    }
+
+    override fun getSwipeDpadReleaseLatency(): Flow<Int> {
+        return getOrCreatePreferenceSharedFlow("input_swipe_dpad_release_latency") {
+            preferences.getInt("input_swipe_dpad_release_latency", 0)
+        }
+    }
+
+    override fun isFullscreenStretchEnabled(): Flow<Boolean> {
+        return getOrCreatePreferenceSharedFlow("input_fullscreen_stretch") {
+            preferences.getBoolean("input_fullscreen_stretch", false)
+        }
+    }
+
     override fun isRetroAchievementsRichPresenceEnabled(): Boolean {
         return preferences.getBoolean("ra_rich_presence", true)
     }

@@ -26,6 +26,32 @@
         app:iconSpaceReserved="false" />
 
     <SwitchPreference
+            android:key="input_swipe_dpad_enabled"
+            android:title="@string/swipe_dpad"
+            android:summary="@string/swipe_dpad_summary"
+            app:iconSpaceReserved="false"
+            android:defaultValue="false" />
+
+    <SeekBarPreference
+            android:key="input_swipe_dpad_release_latency"
+            android:title="@string/swipe_dpad_release_latency"
+            android:summary="@string/swipe_dpad_release_latency_summary"
+            android:dependency="input_swipe_dpad_enabled"
+            app:iconSpaceReserved="false"
+            app:showSeekBarValue="true"
+            app:updatesContinuously="true"
+            app:seekBarIncrement="100"
+            android:defaultValue="0"
+            android:max="30000" />
+
+    <SwitchPreference
+            android:key="input_fullscreen_stretch"
+            android:title="@string/fullscreen_stretch"
+            android:summary="@string/fullscreen_stretch_summary"
+            app:iconSpaceReserved="false"
+            android:defaultValue="false" />
+
+    <SwitchPreference
             android:key="input_touch_haptic_feedback_enabled"
             android:title="@string/vibrate_on_touch"
             app:iconSpaceReserved="false"

@@ -1,0 +1,58 @@
+name: Build test APK
+
+# Builds an installable APK (nightly flavor, signed with a throwaway key) for testing branches.
+on:
+  push:
+    branches: [ 'claude/**' ]
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: zulu
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build melonDS Android
+        run: |
+          COMMIT=$(git rev-parse --short HEAD)
+          sed -i -e 's/\(versionName = "\)\(.*\)\("\)/\1\2 ('"$COMMIT"')\3/g' buildSrc/src/main/kotlin/AppConfig.kt
+          # Test builds are signed with a fixed, public test-only keystore so that they can update each other
+          echo "MELONDS_KEYSTORE=$GITHUB_WORKSPACE/.github/test-keystore.jks" >> local.properties
+          echo "MELONDS_KEYSTORE_PASSWORD=melonds-test" >> local.properties
+          echo "MELONDS_KEY_ALIAS=melonds" >> local.properties
+          echo "MELONDS_KEY_PASSWORD=melonds-test" >> local.properties
+          chmod +x ./gradlew
+          ./gradlew :app:assembleGitHubNightlyRelease
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: melonDS-android-test
+          path: app/build/outputs/apk/gitHubNightly/release/app-gitHub-nightly-release.apk
+
+      - name: Push APK to delivery branch
+        run: |
+          mkdir /tmp/apk-delivery && cd /tmp/apk-delivery
+          git init -b claude/apk-delivery
+          cp "$GITHUB_WORKSPACE/app/build/outputs/apk/gitHubNightly/release/app-gitHub-nightly-release.apk" .
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add .
+          git commit -m "Test APK from $GITHUB_SHA"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" claude/apk-delivery

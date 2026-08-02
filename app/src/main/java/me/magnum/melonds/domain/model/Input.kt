@@ -32,7 +32,9 @@ enum class Input(val keyCode: Int) {
     SWAP_SCREENS(-1),
     QUICK_SAVE(-1),
     QUICK_LOAD(-1),
-    REWIND(-1);
+    REWIND(-1),
+    TOGGLE_FULLSCREEN(-1),
+    QUICK_PAUSE(-1);
 
     val isSystemInput: Boolean
         get() = keyCode != -1

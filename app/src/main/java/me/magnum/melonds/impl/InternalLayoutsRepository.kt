@@ -1,6 +1,7 @@
 package me.magnum.melonds.impl
 
 import android.content.Context
+import android.net.Uri
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +23,7 @@ import me.magnum.melonds.domain.repositories.LayoutsRepository
 import me.magnum.melonds.impl.dtos.layout.LayoutConfigurationDto
 import java.io.File
 import java.io.FileReader
+import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.lang.reflect.Type
 import java.util.UUID
@@ -111,6 +113,42 @@ class InternalLayoutsRepository(private val context: Context, private val gson: 
             }
         }
         saveLayouts()
+    }
+
+    override suspend fun exportLayout(layout: LayoutConfiguration, uri: Uri): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val layoutJson = gson.toJson(LayoutConfigurationDto.fromModel(layout))
+            val outputStream = context.contentResolver.openOutputStream(uri) ?: return@withContext false
+            OutputStreamWriter(outputStream).use {
+                it.write(layoutJson)
+            }
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    override suspend fun importLayout(uri: Uri): LayoutConfiguration? {
+        val importedLayout = withContext(Dispatchers.IO) {
+            try {
+                val inputStream = context.contentResolver.openInputStream(uri) ?: return@withContext null
+                val layoutDto = InputStreamReader(inputStream).use {
+                    gson.fromJson(it, LayoutConfigurationDto::class.java)
+                }
+                // Import as a new custom layout, ignoring the original ID to avoid replacing an existing layout
+                layoutDto?.toModel()?.copy(
+                    id = null,
+                    type = LayoutConfiguration.LayoutType.CUSTOM,
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
+        } ?: return null
+
+        saveLayout(importedLayout)
+        return importedLayout
     }
 
     private suspend fun ensureLayoutsAreLoaded() = withContext(Dispatchers.IO) {

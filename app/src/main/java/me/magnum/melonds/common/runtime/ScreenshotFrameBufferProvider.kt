@@ -1,6 +1,7 @@
 package me.magnum.melonds.common.runtime
 
 import android.graphics.Bitmap
+import me.magnum.melonds.domain.model.Rect
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -31,6 +32,27 @@ class ScreenshotFrameBufferProvider {
                 }
             }
         }
+    }
+
+    /**
+     * Efficiently copies the pixels of the given region of the screenshot buffer into an ARGB
+     * array, without allocating a Bitmap. The region is clamped to the buffer's bounds.
+     */
+    fun copyRegion(region: Rect): IntArray {
+        val frameBuffer = ensureBufferIsReady()
+        val left = region.x.coerceIn(0, SCREEN_WIDTH)
+        val top = region.y.coerceIn(0, SCREEN_HEIGHT)
+        val right = (region.x + region.width).coerceIn(left, SCREEN_WIDTH)
+        val bottom = (region.y + region.height).coerceIn(top, SCREEN_HEIGHT)
+
+        val pixels = IntArray((right - left) * (bottom - top))
+        var index = 0
+        for (y in top until bottom) {
+            for (x in left until right) {
+                pixels[index++] = frameBuffer.getInt((y * SCREEN_WIDTH + x) * 4)
+            }
+        }
+        return pixels
     }
 
     fun clearBuffer() {

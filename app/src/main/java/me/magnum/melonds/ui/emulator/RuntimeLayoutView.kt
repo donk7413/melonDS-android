@@ -2,11 +2,13 @@ package me.magnum.melonds.ui.emulator
 
 import android.content.Context
 import android.util.AttributeSet
+import android.view.View
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import dagger.hilt.android.AndroidEntryPoint
 import me.magnum.melonds.common.vibration.TouchVibrator
 import me.magnum.melonds.domain.model.Input
+import me.magnum.melonds.domain.model.Rect
 import me.magnum.melonds.domain.model.input.SoftInputBehaviour
 import me.magnum.melonds.domain.model.layout.LayoutComponent
 import me.magnum.melonds.ui.common.LayoutView
@@ -15,6 +17,7 @@ import me.magnum.melonds.ui.emulator.input.DpadInputHandler
 import me.magnum.melonds.ui.emulator.input.FrontendInputHandler
 import me.magnum.melonds.ui.emulator.input.IInputListener
 import me.magnum.melonds.ui.emulator.input.SingleButtonInputHandler
+import me.magnum.melonds.ui.emulator.input.SwipeDpadInputHandler
 import me.magnum.melonds.ui.emulator.input.TouchscreenInputHandler
 import me.magnum.melonds.ui.emulator.input.view.ToggleableImageView
 import me.magnum.melonds.ui.emulator.model.ConnectedControllersState
@@ -33,6 +36,8 @@ class RuntimeLayoutView(context: Context, attrs: AttributeSet? = null) : LayoutV
     private var systemInputHandler: IInputListener? = null
     private var isSoftInputVisible = true
     private var areScreensSwapped = false
+    private var isFullscreen = false
+    private var fullscreenTouchView: View? = null
     private var connectedControllersState: ConnectedControllersState = ConnectedControllersState.NoControllers
 
     fun setFrontendInputHandler(frontendInputHandler: FrontendInputHandler) {
@@ -65,6 +70,16 @@ class RuntimeLayoutView(context: Context, attrs: AttributeSet? = null) : LayoutV
         return areScreensSwapped
     }
 
+    fun toggleFullscreen() {
+        isFullscreen = !isFullscreen
+        setLayoutComponentToggleState(LayoutComponent.BUTTON_TOGGLE_FULLSCREEN, isFullscreen)
+        updateScreenInputs()
+    }
+
+    fun isFullscreen(): Boolean {
+        return isFullscreen
+    }
+
     fun setLayoutComponentToggleState(layoutComponent: LayoutComponent, isEnabled: Boolean) {
         val toggleableImageView = getLayoutComponentView(layoutComponent)?.view as? ToggleableImageView ?: return
         toggleableImageView.setToggleState(isEnabled)
@@ -76,6 +91,7 @@ class RuntimeLayoutView(context: Context, attrs: AttributeSet? = null) : LayoutV
         updateInputs()
         updateVisibility()
         setLayoutComponentToggleState(LayoutComponent.BUTTON_TOGGLE_SOFT_INPUT, isSoftInputVisible)
+        setLayoutComponentToggleState(LayoutComponent.BUTTON_TOGGLE_FULLSCREEN, isFullscreen)
     }
 
     private fun updateInputs() {
@@ -107,6 +123,8 @@ class RuntimeLayoutView(context: Context, attrs: AttributeSet? = null) : LayoutV
             getLayoutComponentView(LayoutComponent.BUTTON_SWAP_SCREENS)?.view?.setOnTouchListener(SingleButtonInputHandler(it, Input.SWAP_SCREENS, enableHapticFeedback, touchVibrator))
             getLayoutComponentView(LayoutComponent.BUTTON_QUICK_SAVE)?.view?.setOnTouchListener(SingleButtonInputHandler(it, Input.QUICK_SAVE, enableHapticFeedback, touchVibrator))
             getLayoutComponentView(LayoutComponent.BUTTON_QUICK_LOAD)?.view?.setOnTouchListener(SingleButtonInputHandler(it, Input.QUICK_LOAD, enableHapticFeedback, touchVibrator))
+            getLayoutComponentView(LayoutComponent.BUTTON_TOGGLE_FULLSCREEN)?.view?.setOnTouchListener(SingleButtonInputHandler(it, Input.TOGGLE_FULLSCREEN, enableHapticFeedback, touchVibrator))
+            getLayoutComponentView(LayoutComponent.BUTTON_QUICK_PAUSE)?.view?.setOnTouchListener(SingleButtonInputHandler(it, Input.QUICK_PAUSE, enableHapticFeedback, touchVibrator))
             getLayoutComponentView(LayoutComponent.BUTTON_REWIND)?.view?.setOnTouchListener(SingleButtonInputHandler(it, Input.REWIND, enableHapticFeedback, touchVibrator))
         }
 
@@ -127,10 +145,72 @@ class RuntimeLayoutView(context: Context, attrs: AttributeSet? = null) : LayoutV
         } else {
             LayoutComponent.BOTTOM_SCREEN to LayoutComponent.TOP_SCREEN
         }
-        systemInputHandler?.let {
-            getLayoutComponentView(touchScreenComponent)?.view?.setOnTouchListener(TouchscreenInputHandler(it))
+        val systemInputHandler = systemInputHandler
+        val currentRuntimeLayout = currentRuntimeLayout
+        val createSwipeDpadInputHandler = {
+            if (currentRuntimeLayout?.isSwipeDpadEnabled == true && systemInputHandler != null) {
+                SwipeDpadInputHandler(systemInputHandler, currentRuntimeLayout.isHapticFeedbackEnabled, touchVibrator, currentRuntimeLayout.swipeDpadReleaseLatency.toLong())
+            } else {
+                null
+            }
         }
-        getLayoutComponentView(nonTouchScreenComponent)?.view?.setOnTouchListener(null)
+        if (isFullscreen) {
+            // The whole view is covered by a single screen. Screen touches are handled by a dedicated full-size overlay
+            getLayoutComponentView(touchScreenComponent)?.view?.setOnTouchListener(null)
+            getLayoutComponentView(nonTouchScreenComponent)?.view?.setOnTouchListener(null)
+            val overlayInputHandler = if (areScreensSwapped && systemInputHandler != null) {
+                // The screen displayed in fullscreen is the touch screen
+                TouchscreenInputHandler(systemInputHandler) { getFullscreenScreenRect() }
+            } else {
+                createSwipeDpadInputHandler()
+            }
+            getOrCreateFullscreenTouchView().setOnTouchListener(overlayInputHandler)
+        } else {
+            removeFullscreenTouchView()
+            val touchScreenInputHandler = if (systemInputHandler != null) {
+                TouchscreenInputHandler(systemInputHandler)
+            } else {
+                null
+            }
+            getLayoutComponentView(touchScreenComponent)?.view?.setOnTouchListener(touchScreenInputHandler)
+            getLayoutComponentView(nonTouchScreenComponent)?.view?.setOnTouchListener(createSwipeDpadInputHandler())
+        }
+    }
+
+    fun getFullscreenScreenRect(): Rect {
+        if (currentRuntimeLayout?.isFullscreenStretchEnabled == true) {
+            return Rect(0, 0, width, height)
+        }
+
+        val screenAspectRatio = 256f / 192f
+        return if (width / screenAspectRatio <= height) {
+            val screenHeight = (width / screenAspectRatio).toInt()
+            Rect(0, (height - screenHeight) / 2, width, screenHeight)
+        } else {
+            val screenWidth = (height * screenAspectRatio).toInt()
+            Rect((width - screenWidth) / 2, 0, screenWidth, height)
+        }
+    }
+
+    private fun getOrCreateFullscreenTouchView(): View {
+        val existingView = fullscreenTouchView
+        if (existingView != null && existingView.parent == this) {
+            return existingView
+        }
+
+        val touchView = View(context)
+        // Place the overlay above the screens but below the soft input buttons
+        val screenViewCount = getLayoutComponentViews().count { it.component.isScreen() }
+        addView(touchView, screenViewCount, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        fullscreenTouchView = touchView
+        return touchView
+    }
+
+    private fun removeFullscreenTouchView() {
+        fullscreenTouchView?.let {
+            removeView(it)
+            fullscreenTouchView = null
+        }
     }
 
     private fun updateVisibility() {

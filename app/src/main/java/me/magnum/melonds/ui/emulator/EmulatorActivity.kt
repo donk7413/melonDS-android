@@ -1,5 +1,6 @@
 package me.magnum.melonds.ui.emulator
 
+import android.animation.ObjectAnimator
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -9,12 +10,15 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.view.Display
+import android.view.Gravity
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
 import android.view.WindowManager
+import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
@@ -97,6 +101,7 @@ import me.magnum.melonds.ui.emulator.rewind.EdgeSpacingDecorator
 import me.magnum.melonds.ui.emulator.rewind.RewindSaveStateAdapter
 import me.magnum.melonds.ui.emulator.rewind.model.RewindWindow
 import me.magnum.melonds.ui.emulator.rom.SaveStateAdapter
+import me.magnum.melonds.ui.emulator.autoaction.ui.AutoActionsDialog
 import me.magnum.melonds.ui.emulator.ui.AchievementListDialog
 import me.magnum.melonds.ui.emulator.ui.AchievementUpdatesUi
 import me.magnum.melonds.ui.emulator.ui.PendingSubmissionsDialog
@@ -239,6 +244,70 @@ class EmulatorActivity : AppCompatActivity() {
         override fun onRewind() {
             viewModel.onOpenRewind()
         }
+
+        override fun onToggleFullscreen() {
+            binding.viewLayoutControls.toggleFullscreen()
+            updateRendererScreenAreas()
+        }
+
+        override fun onQuickPause() {
+            toggleQuickPause()
+        }
+    }
+
+    private var isQuickPaused = false
+    private var quickPauseAnimator: ObjectAnimator? = null
+    private val quickPauseOverlay by lazy {
+        val pauseIcon = ImageView(this).apply {
+            setImageResource(R.drawable.ic_pause_large)
+            isClickable = true
+            isFocusable = true
+            // Only tapping the central pause symbol resumes the game. The rest of the overlay
+            // swallows touches so that the game controls stay inactive while paused
+            setOnClickListener { dismissQuickPause(resumeEmulator = true) }
+        }
+        FrameLayout(this).apply {
+            setBackgroundColor(0x99333333.toInt())
+            isClickable = true
+            isFocusable = true
+            val iconSize = (140 * resources.displayMetrics.density).toInt()
+            addView(pauseIcon, FrameLayout.LayoutParams(iconSize, iconSize, Gravity.CENTER))
+        }
+    }
+
+    private fun toggleQuickPause() {
+        if (isQuickPaused) {
+            dismissQuickPause(resumeEmulator = true)
+        } else if (viewModel.emulatorState.value.isRunning()) {
+            isQuickPaused = true
+            viewModel.pauseEmulator(false)
+            if (quickPauseOverlay.parent == null) {
+                addContentView(quickPauseOverlay, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+            }
+            quickPauseOverlay.isVisible = true
+            val pauseIcon = quickPauseOverlay.getChildAt(0)
+            quickPauseAnimator?.cancel()
+            quickPauseAnimator = ObjectAnimator.ofFloat(pauseIcon, View.ALPHA, 1f, 0.2f).apply {
+                duration = 1200
+                repeatMode = ObjectAnimator.REVERSE
+                repeatCount = ObjectAnimator.INFINITE
+                start()
+            }
+        }
+    }
+
+    private fun dismissQuickPause(resumeEmulator: Boolean) {
+        if (!isQuickPaused) {
+            return
+        }
+
+        isQuickPaused = false
+        quickPauseAnimator?.cancel()
+        quickPauseAnimator = null
+        quickPauseOverlay.isVisible = false
+        if (resumeEmulator) {
+            viewModel.resumeEmulator()
+        }
     }
     private val settingsLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         viewModel.onSettingsChanged()
@@ -269,6 +338,7 @@ class EmulatorActivity : AppCompatActivity() {
     }
     private val showAchievementList = mutableStateOf(false)
     private val showPendingSubmissionsDialog = mutableStateOf(false)
+    private val showAutoActionsDialog = mutableStateOf(false)
 
     private val activeOverlays = EmulatorOverlayTracker(
         onOverlaysCleared = {
@@ -390,6 +460,17 @@ class EmulatorActivity : AppCompatActivity() {
                             activeOverlays.removeActiveOverlay(EmulatorOverlay.PENDING_SUBMISSION_CONFIRM_EXIT)
                             viewModel.resumeEmulator()
                             showPendingSubmissionsDialog.value = false
+                        }
+                    )
+                }
+
+                if (showAutoActionsDialog.value) {
+                    AutoActionsDialog(
+                        viewModel = viewModel,
+                        onDismiss = {
+                            activeOverlays.removeActiveOverlay(EmulatorOverlay.AUTO_ACTIONS_DIALOG)
+                            viewModel.resumeEmulator()
+                            showAutoActionsDialog.value = false
                         }
                     )
                 }
@@ -516,6 +597,13 @@ class EmulatorActivity : AppCompatActivity() {
                         EmulatorUiEvent.ShowAchievementList -> {
                             activeOverlays.addActiveOverlay(EmulatorOverlay.ACHIEVEMENTS_DIALOG)
                             showAchievementList.value = true
+                        }
+                        EmulatorUiEvent.ShowAutoActions -> {
+                            activeOverlays.addActiveOverlay(EmulatorOverlay.AUTO_ACTIONS_DIALOG)
+                            showAutoActionsDialog.value = true
+                        }
+                        is EmulatorUiEvent.PerformFrontendAction -> {
+                            frontendInputHandler.onKeyPress(it.input)
                         }
                         EmulatorUiEvent.ShowPendingSubmissionsDialog -> {
                             activeOverlays.addActiveOverlay(EmulatorOverlay.PENDING_SUBMISSION_CONFIRM_EXIT)
@@ -801,6 +889,30 @@ class EmulatorActivity : AppCompatActivity() {
     }
 
     private fun updateRendererScreenAreas() {
+        if (binding.viewLayoutControls.isFullscreen()) {
+            // A single screen is rendered, expanded to fill the view while keeping its aspect ratio. Swapping
+            // screens toggles which screen is displayed
+            val fullscreenRect = binding.viewLayoutControls.getFullscreenScreenRect()
+            val isBottomScreenDisplayed = binding.viewLayoutControls.areScreensSwapped()
+            mainScreenRenderer.updateScreenAreas(
+                if (isBottomScreenDisplayed) null else fullscreenRect,
+                if (isBottomScreenDisplayed) fullscreenRect else null,
+                1f,
+                1f,
+                false,
+                false,
+            )
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                window?.systemGestureExclusionRects = if (isBottomScreenDisplayed) {
+                    listOf(android.graphics.Rect(fullscreenRect.x, fullscreenRect.y, fullscreenRect.right, fullscreenRect.bottom))
+                } else {
+                    emptyList()
+                }
+            }
+            return
+        }
+
         val (topScreen, bottomScreen) = if (binding.viewLayoutControls.areScreensSwapped()) {
             LayoutComponent.BOTTOM_SCREEN to LayoutComponent.TOP_SCREEN
         } else {
@@ -825,6 +937,7 @@ class EmulatorActivity : AppCompatActivity() {
             window?.systemGestureExclusionRects = touchScreenArea.orEmpty()
         }
     }
+
 
     private fun setupInputHandling(controllerConfiguration: ControllerConfiguration) {
         nativeInputListener = InputProcessor(controllerConfiguration, melonTouchHandler, frontendInputHandler)
@@ -1003,6 +1116,7 @@ class EmulatorActivity : AppCompatActivity() {
         super.onPause()
         enableScreenTimeOut()
         choreographerFrameRenderer.stopRendering()
+        dismissQuickPause(resumeEmulator = false)
         viewModel.pauseEmulator(false)
     }
 

@@ -1,5 +1,6 @@
 package me.magnum.melonds.ui.layouts.viewmodel
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,6 +32,14 @@ abstract class BaseLayoutsViewModel(protected val layoutsRepository: LayoutsRepo
             }
             layoutsRepository.deleteLayout(layout)
         }
+    }
+
+    suspend fun exportLayout(layout: LayoutConfiguration, uri: Uri): Boolean {
+        return layoutsRepository.exportLayout(layout, uri)
+    }
+
+    suspend fun importLayout(uri: Uri): Boolean {
+        return layoutsRepository.importLayout(uri) != null
     }
 
     abstract fun setSelectedLayoutId(id: UUID?)
